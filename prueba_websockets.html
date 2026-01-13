@@ -130,7 +130,18 @@
                 vida: parseInt(vida)
             };
 
+            // Convierto mi objeto a texto y lo mando por el cable.
             ws.send(JSON.stringify(payload));
+
+            // ¡AQUÍ MI MEJORA!: Pongo un mensaje local en mi consola para saber que he enviado los datos.
+            // Como el servidor ya no me devuelve el eco (para no gastar internet), esto me sirve de confirmación.
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.style.color = "#007bff"; // Un azul bonito para mis mensajes locales
+            messageDiv.innerHTML = `<i>[LOCAL] He enviado mi estado: X:${x}, Y:${y}, Rot:${rot}°, HP:${vida}%</i>`;
+
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
         }
     </script>
 </body>
