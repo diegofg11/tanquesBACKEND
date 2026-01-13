@@ -59,13 +59,23 @@ class ConnectionManager:
                     
         print(f"DEBUG MÍO: {username} se ha pirado de '{room_id}'.")
 
-    async def broadcast_to_room(self, message: dict, room_id: str):
-        """Envío el paquete a TODOS los que estén en esta sala."""
+    async def broadcast_to_room(self, message: dict, room_id: str, exclude_self: WebSocket = None):
+        """
+        Envío el paquete a los que estén en esta sala.
+        Si me pasan un 'exclude_self', me salto a ese jugador (para evitar el eco).
+        """
         if room_id in self.active_rooms:
+            # Recorro uno a uno todos los cables de esta habitación.
             for connection in self.active_rooms[room_id]:
+                # Si he pedido excluir a alguien y esta es su conexión, me lo salto.
+                if exclude_self and connection == exclude_self:
+                    continue
+                    
                 try:
+                    # Uso send_json para no tener que andar convirtiendo yo el texto.
                     await connection.send_json(message)
                 except Exception:
+                    # Si falla el envío a uno (ej: ha cerrado el PC), no quiero que se me pare el resto.
                     pass
 
 # Me creo una única instancia para que todo mi servidor use el mismo gestor.

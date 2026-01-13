@@ -86,7 +86,8 @@ async def game_websocket(websocket: WebSocket, room_id: str, username: str):
                 }
                 
                 # 7. Lo reenvío a toda la sala con total tranquilidad.
-                await manager.broadcast_to_room(paquete, room_id)
+                # Le paso mi propio websocket a 'exclude_self' para que no me devuelva mi propio movimiento.
+                await manager.broadcast_to_room(paquete, room_id, exclude_self=websocket)
 
             except ValidationError as e:
                 # Si me mandan basura, paso del mensaje y lo imprimo en mi consola para verlo.

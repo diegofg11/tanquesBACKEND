@@ -69,11 +69,16 @@
         let ws;
 
         function connect() {
+            // SI YA ESTABA CONECTADO (por ejemplo, si le doy dos veces al botón), 
+            // cierro la conexión vieja para no tener cables duplicados y ver mensajes dobles.
+            if (ws) {
+                ws.close();
+            }
+
             const username = document.getElementById('username').value;
             const room = document.getElementById('room_id').value;
 
             // Abro mi "tubería" (WebSocket) hacia el servidor.
-            // Le paso la sala y mi nombre en la URL para que el servidor sepa quién soy.
             ws = new WebSocket(`ws://localhost:8000/ws/game/${room}/${username}`);
 
             // Este evento me salta cuando he logrado conectar bien.
@@ -83,31 +88,28 @@
                 document.getElementById('sendBtn').disabled = false;
             };
 
-            // Aquí es donde recibo todo lo que el servidor me "reparte" de mi sala.
+            // Aquí recibo los mensajes que el servidor reparte a la sala.
             ws.onmessage = function (event) {
-                // Paso el texto JSON que me llega a un objeto de JS que yo pueda manejar.
                 const data = JSON.parse(event.data);
                 const messages = document.getElementById('messages');
                 const messageDiv = document.createElement('div');
 
-                // Lógica que me he currado para mostrar los mensajes según el tipo:
                 if (data.tipo === "sistema") {
-                    // Mensajes automáticos del servidor (color amarillo).
                     messageDiv.style.color = "#ffc107";
-                    messageDiv.innerText = `[AVISO SISTEMA] ${data.contenido}`;
+                    messageDiv.innerText = `[SISTEMA] ${data.contenido}`;
                 } else if (data.tipo === "movimiento") {
-                    // Datos de los otros tanques que se están moviendo.
-                    // Me he puesto lo de la vida en rojo si baja mucho para que se vea claro.
+                    // Si el nombre del jugador es el mío, pongo un prefijo para saber que es mi "eco" del servidor.
+                    const yo = document.getElementById('username').value;
+                    const prefijo = (data.jugador === yo) ? "MI ESTADO -> " : "";
+
                     const colorVida = data.datos.vida > 30 ? '#28a745' : '#dc3545';
-                    messageDiv.innerHTML = `<b>${data.jugador}:</b> X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°, <b style="color: ${colorVida}">HP:${data.datos.vida}%</b>`;
+                    messageDiv.innerHTML = `<b>${prefijo}${data.jugador}:</b> X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°, <b style="color: ${colorVida}">HP:${data.datos.vida}%</b>`;
                 }
 
-                // Añado el mensaje a mi consola y hago que baje el scroll solo.
                 messages.appendChild(messageDiv);
                 messages.scrollTop = messages.scrollHeight;
             };
 
-            // Si pierdo internet o el servidor se cae, me aviso aquí.
             ws.onclose = function () {
                 document.getElementById('status').innerText = "Vaya, me he desconectado";
                 document.getElementById('status').style.color = "#dc3545";
@@ -115,17 +117,12 @@
             };
         }
 
-        /**
-         * Con esta función monto el paquete de datos de mi tanque
-         * y lo mando por la tubería para que todos los demás me vean.
-         */
         function sendMovement() {
             const x = document.getElementById('posX').value;
             const y = document.getElementById('posY').value;
             const rot = document.getElementById('rot').value;
             const vida = document.getElementById('hp').value;
 
-            // Este es mi "contrato" de datos. Tengo que mandar lo mismo desde Unity luego.
             const payload = {
                 x: parseInt(x),
                 y: parseInt(y),
@@ -133,7 +130,6 @@
                 vida: parseInt(vida)
             };
 
-            // Convierto mi objeto a texto para que el servidor pueda masticarlo.
             ws.send(JSON.stringify(payload));
         }
     </script>
