@@ -5,59 +5,59 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserOut
 from app.core.security import get_password_hash, verify_password
 
-# El APIRouter sirve para agrupar rutas relacionadas (en este caso, todo lo de usuarios).
+# Me creo este APIRouter para tener todas las rutas de mis usuarios bien agrupadas.
 router = APIRouter(
     prefix="/users",
-    tags=["Usuarios"] # Esto agrupa las rutas en la documentación automática (/docs)
+    tags=["Usuarios"] # Así me salen juntitos en la documentación (/docs)
 )
 
 @router.post("/register", response_model=UserOut)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     """
-    Ruta para registrar un nuevo jugador.
-    - Comprueba si el nombre ya existe.
-    - Encripta la contraseña.
-    - Guarda al usuario en la base de datos SQL.
+    Ruta que me he hecho para registrar a nuevos jugadores.
+    - Miro si el nombre ya está pillado.
+    - Encripto la contraseña (¡nunca en plano!).
+    - Lo guardo en mi base de datos SQL.
     """
-    # 1. Buscamos si ya existe alguien con ese nombre
+    # 1. Primero miro si ya tengo a alguien con ese mismo nombre.
     db_user = db.query(User).filter(User.username == user_data.username).first()
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nombre de usuario ya está registrado"
+            detail="Este nombre de usuario ya lo tengo registrado"
         )
     
-    # 2. Encriptamos la contraseña antes de guardarla
+    # 2. Paso la contraseña por mi función de hash para que sea segura.
     hashed_pwd = get_password_hash(user_data.password)
     
-    # 3. Creamos el objeto del nuevo usuario
+    # 3. Monto mi objeto de usuario nuevo.
     new_user = User(
         username=user_data.username,
         hashed_password=hashed_pwd
     )
     
-    # 4. Lo añadimos a la base de datos y confirmamos (commit)
+    # 4. Lo mando a la base de datos y hago el commit para confirmar.
     db.add(new_user)
     db.commit()
-    db.refresh(new_user) # Actualiza el objeto con el ID generado por la base de datos
+    db.refresh(new_user) # Le pido a la DB que me devuelva el ID que le ha puesto
     
     return new_user
 
 @router.post("/login")
 def login(user_data: UserCreate, db: Session = Depends(get_db)):
     """
-    Ruta básica para iniciar sesión.
-    - Busca al usuario.
-    - Verifica que la contraseña sea correcta.
+    Aquí es donde compruebo si alguien puede entrar.
+    - Busco al usuario.
+    - Verifico que la contraseña me cuadre.
     """
-    # 1. Buscamos al usuario por su nombre
+    # 1. Lo busco en mi base de datos por su nombre.
     user = db.query(User).filter(User.username == user_data.username).first()
     
-    # 2. Si no existe o la contraseña no coincide...
+    # 2. Si no lo encuentro o la contraseña no es la suya...
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario o contraseña incorrectos"
+            detail="Me has dado un usuario o contraseña incorrectos"
         )
     
-    return {"mensaje": "Inicio de sesión correcto", "user_id": user.id}
+    return {"mensaje": "¡He recordado al usuario! Entrando...", "user_id": user.id}

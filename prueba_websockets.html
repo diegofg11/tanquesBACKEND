@@ -65,59 +65,59 @@
     </div>
 
     <script>
-        // Guardamos la conexión aquí para poder usarla en todas las funciones.
+        // Aquí me guardo mi conexión para poder usarla en todas mis funciones.
         let ws;
 
         function connect() {
             const username = document.getElementById('username').value;
             const room = document.getElementById('room_id').value;
 
-            // Abrimos la "tubería" (WebSocket) hacia el servidor.
-            // La URL ahora incluye la sala y el nombre para que el servidor nos identifique.
+            // Abro mi "tubería" (WebSocket) hacia el servidor.
+            // Le paso la sala y mi nombre en la URL para que el servidor sepa quién soy.
             ws = new WebSocket(`ws://localhost:8000/ws/game/${room}/${username}`);
 
-            // Este evento se dispara cuando la conexión se abre correctamente.
+            // Este evento me salta cuando he logrado conectar bien.
             ws.onopen = function () {
-                document.getElementById('status').innerText = `Conectado a ${room} como ${username}`;
+                document.getElementById('status').innerText = `Estoy en la sala ${room} como ${username}`;
                 document.getElementById('status').style.color = "#28a745";
                 document.getElementById('sendBtn').disabled = false;
             };
 
-            // Aquí recibimos los mensajes que el servidor "reparte" a la sala.
+            // Aquí es donde recibo todo lo que el servidor me "reparte" de mi sala.
             ws.onmessage = function (event) {
-                // Convertimos el texto JSON que viene del servidor en un objeto JavaScript.
+                // Paso el texto JSON que me llega a un objeto de JS que yo pueda manejar.
                 const data = JSON.parse(event.data);
                 const messages = document.getElementById('messages');
                 const messageDiv = document.createElement('div');
 
-                // Lógica para mostrar los mensajes según su tipo:
+                // Lógica que me he currado para mostrar los mensajes según el tipo:
                 if (data.tipo === "sistema") {
-                    // Mensajes de entrada/salida de jugadores (color amarillo).
+                    // Mensajes automáticos del servidor (color amarillo).
                     messageDiv.style.color = "#ffc107";
-                    messageDiv.innerText = `[SISTEMA] ${data.contenido}`;
+                    messageDiv.innerText = `[AVISO SISTEMA] ${data.contenido}`;
                 } else if (data.tipo === "movimiento") {
-                    // Datos de otro tanque (X, Y, Rotación y Vida).
-                    // Usamos colores para que la vida sea más fácil de vigilar.
+                    // Datos de los otros tanques que se están moviendo.
+                    // Me he puesto lo de la vida en rojo si baja mucho para que se vea claro.
                     const colorVida = data.datos.vida > 30 ? '#28a745' : '#dc3545';
-                    messageDiv.innerHTML = `<b>${data.jugador}:</b> movido a X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°, <b style="color: ${colorVida}">HP:${data.datos.vida}%</b>`;
+                    messageDiv.innerHTML = `<b>${data.jugador}:</b> X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°, <b style="color: ${colorVida}">HP:${data.datos.vida}%</b>`;
                 }
 
-                // Añadimos el mensaje a la consola y hacemos scroll hacia abajo.
+                // Añado el mensaje a mi consola y hago que baje el scroll solo.
                 messages.appendChild(messageDiv);
                 messages.scrollTop = messages.scrollHeight;
             };
 
-            // Si el servidor se apaga o perdemos internet, avisamos al usuario.
+            // Si pierdo internet o el servidor se cae, me aviso aquí.
             ws.onclose = function () {
-                document.getElementById('status').innerText = "Desconectado";
+                document.getElementById('status').innerText = "Vaya, me he desconectado";
                 document.getElementById('status').style.color = "#dc3545";
                 document.getElementById('sendBtn').disabled = true;
             };
         }
 
         /**
-         * Esta función empaqueta el estado actual del tanque en un JSON
-         * y lo lanza por el WebSocket para que los demás lo vean.
+         * Con esta función monto el paquete de datos de mi tanque
+         * y lo mando por la tubería para que todos los demás me vean.
          */
         function sendMovement() {
             const x = document.getElementById('posX').value;
@@ -125,7 +125,7 @@
             const rot = document.getElementById('rot').value;
             const vida = document.getElementById('hp').value;
 
-            // Creamos el "contrato" de datos que compartiremos con Unity y otros clientes.
+            // Este es mi "contrato" de datos. Tengo que mandar lo mismo desde Unity luego.
             const payload = {
                 x: parseInt(x),
                 y: parseInt(y),
@@ -133,7 +133,7 @@
                 vida: parseInt(vida)
             };
 
-            // JSON.stringify convierte el objeto anterior en texto para poder enviarlo.
+            // Convierto mi objeto a texto para que el servidor pueda masticarlo.
             ws.send(JSON.stringify(payload));
         }
     </script>

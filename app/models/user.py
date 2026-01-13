@@ -1,22 +1,22 @@
 from sqlalchemy import Column, Integer, String, Boolean
 from app.database import Base
 
-# Esta clase define cómo será nuestra tabla de usuarios en la base de datos SQL.
-# Cada atributo de la clase representa una columna de la tabla.
+# Aquí me monto mi tabla de usuarios tal cual quiero que sea en mi base de datos SQL.
+# Cada cosa que ponga aquí será una columna en mi tabla de verdad.
 class User(Base):
-    __tablename__ = "users" # El nombre de la tabla en el archivo .db
+    __tablename__ = "users" # Así voy a llamar a mi tabla en el archivo .db
 
-    # 'primary_key=True' significa que este ID es único para cada usuario (como el DNI).
+    # Pongo el ID como clave primaria e índice para que sea rapidísimo encontrarlos.
     id = Column(Integer, primary_key=True, index=True)
     
-    # 'unique=True' impide que dos personas se registren con el mismo nombre.
+    # El nombre de usuario tiene que ser único; no quiero dos personas llamándose igual.
     username = Column(String, unique=True, index=True)
     
-    # Aquí guardaremos la contraseña. IMPORTANTE: Guardaremos el "hash" (encriptada), nunca el texto real.
+    # IMPORTANTE: Aquí guardo el hash de la contraseña, que no quiero líos si me roban la DB.
     hashed_password = Column(String)
     
-    # Esto nos servirá para saber si la cuenta está activa.
+    # Con esto controlo si el usuario todavía puede entrar o si le he baneado.
     is_active = Column(Boolean, default=True)
 
-    # Puedes añadir más campos aquí, como 'score' o 'level'.
+    # Aquí guardo los puntos de cada uno para mi futuro sistema de ránking.
     score = Column(Integer, default=0)

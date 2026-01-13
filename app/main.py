@@ -5,99 +5,99 @@ from app.database import engine, Base
 from app.models import user
 from app.api import users
 from app.api.game import manager 
-from app.schemas.game import TankState # Nuestro nuevo "Filtro" de datos
-from pydantic import ValidationError    # Para capturar errores de validación
+from app.schemas.game import TankState # Este es el filtro que me he creado para validar los datos
+from pydantic import ValidationError    # Lo necesito para capturar fallos en los datos
 
-# --- CONFIGURACIÓN DE LA BASE DE DATOS ---
-# Esta línea crea automáticamente las tablas en el archivo .db si no existen.
+# --- CONFIGURACIÓN DE MI BASE DE DATOS ---
+# Con esto hago que se creen las tablas automáticamente si no existen todavía.
 Base.metadata.create_all(bind=engine)
 
-# --- INSTANCIA PRINCIPAL ---
+# --- MI INSTANCIA PRINCIPAL ---
 app = FastAPI(
     title="Tanques API",
-    description="Backend para el videojuego de tanques multi-jugador",
+    description="Backend para mi juego de tanques",
     version="0.1.0"
 )
 
-# Conectamos las rutas de usuarios (Registro, Login)
+# Aquí conecto mis rutas de usuarios (registro y login) al servidor principal
 app.include_router(users.router)
 
-# --- MANEJADORES DE ERRORES ---
+# --- MIS MANEJADORES DE ERRORES ---
+# Esto lo pongo para que si falla una validación, el servidor me responda algo que yo entienda.
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=422,
-        content={"message": "Error de validación", "detalle": exc.errors()},
+        content={"message": "He detectado un error de validación", "detalle": exc.errors()},
     )
 
+# Este es mi "salvavidas" para capturar cualquier otro error que se me haya escapado.
 @app.exception_handler(Exception)
 async def debug_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content={"message": "Error interno", "detalle": str(exc), "tipo": str(type(exc))},
+        content={"message": "Ha petado algo interno", "detalle": str(exc)},
     )
 
-# --- ENDPOINTS BÁSICOS ---
+# --- MI RUTA DE BIENVENIDA ---
 @app.get("/")
 async def root():
     return {
-        "mensaje": "¡Bienvenido a la API de Tanques!",
-        "estado": "Funcionando correctamente",
-        "doc_url": "/docs"
+        "mensaje": "¡Mi API de Tanques está en marcha!",
+        "doc_url": "/docs" # Mi chuleta de documentación automática
     }
 
-# --- WEBSOCKETS PARA EL MULTIJUGADOR (CON VALIDACIÓN) ---
+# --- MI LÓGICA DE WEBSOCKETS (CON MI FILTRO DE SEGURIDAD) ---
 
 @app.websocket("/ws/game/{room_id}/{username}")
 async def game_websocket(websocket: WebSocket, room_id: str, username: str):
     """
-    Punto de conexión para los tanques. Ahora con validación Pydantic.
+    Aquí es donde gestiono la conexión de los tanques.
+    He metido validación con Pydantic para no volverme loco con errores de datos.
     """
-    # 1. Registramos al jugador en la sala.
+    # 1. Meto al jugador en la sala que ha pedido.
     await manager.connect(websocket, room_id)
     
-    # 2. Mensaje inicial de sistema.
+    # 2. Lanzo un mensaje de sistema para avisar a los demás.
     await manager.broadcast_to_room({
         "tipo": "sistema",
-        "contenido": f"{username} ha entrado a la sala {room_id}"
+        "contenido": f"{username} se ha unido a mi partida en {room_id}"
     }, room_id)
     
     try:
         while True:
-            # 3. Recibimos el JSON "crudo" del cliente.
+            # 3. Me quedo esperando a que el cliente me mande un JSON.
             data = await websocket.receive_json()
             
             try:
-                # 4. PASAMOS EL FILTRO (Pydantic):
-                # Intentamos convertir el JSON en un objeto TankState.
-                # Si falta la vida, o la rotación es 500, esto lanzará un ValidationError.
+                # 4. PASO MI FILTRO:
+                # Intento encajar lo que me ha llegado en mi molde TankState.
+                # Así me aseguro de que X, Y, rotación y vida son correctos.
                 estado_validado = TankState(**data)
                 
-                # 5. Si los datos son válidos, preparamos el paquete.
-                # .dict() convierte el objeto TankState de vuelta a un diccionario de Python.
+                # 5. Si los datos están bien, monto mi paquete para repartirlo.
                 paquete = {
                     "jugador": username,
                     "datos": estado_validado.dict(),
                     "tipo": "movimiento"
                 }
                 
-                # 6. Reenviamos con total seguridad a la sala.
+                # 6. Lo reenvío a toda la sala con total tranquilidad.
                 await manager.broadcast_to_room(paquete, room_id)
 
             except ValidationError as e:
-                # Si los datos están mal, el servidor no se cae.
-                # Simplemente ignoramos este paquete corrupto y avisamos por consola.
-                print(f"AVISO: {username} envió datos inválidos: {e.json()}")
+                # Si me mandan basura, paso del mensaje y lo imprimo en mi consola para verlo.
+                print(f"Ojo: {username} me ha mandado datos que no me valen: {e.json()}")
                 continue 
             
     except WebSocketDisconnect:
+        # Si alguien se desconecta, lo limpio de mi gestor y aviso a la sala.
         manager.disconnect(websocket, room_id)
         await manager.broadcast_to_room({
             "tipo": "sistema",
-            "contenido": f"{username} ha salido de la partida."
+            "contenido": f"{username} se ha ido de la partida."
         }, room_id)
     except Exception as e:
-        print(f"Error inesperado en WebSocket ({username}): {e}")
+        # Error inesperado, saco al jugador por si acaso.
+        print(f"Me ha petado el WebSocket de {username}: {e}")
         manager.disconnect(websocket, room_id)
-
-# --------------------------------------

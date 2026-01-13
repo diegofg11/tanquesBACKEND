@@ -2,25 +2,25 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# 1. Definimos dónde estará nuestro archivo de base de datos.
-# "sqlite:///./sql_app.db" le dice a SQLAlchemy que use SQLite y cree un archivo llamado 'sql_app.db' en esta carpeta.
+# 1. Aquí digo dónde voy a guardar mis datos.
+# He elegido SQLite para que se me cree un archivo 'sql_app.db' aquí mismo y sea fácil de manejar.
 SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
 
-# 2. El 'engine' (motor) es el que se encarga de hablar directamente con el archivo .db
-# 'check_same_thread': False es necesario solo para SQLite en entornos multihilo.
+# 2. Me creo este "engine" (motor) para que se encargue de hablar con mi archivo .db
+# Le pongo check_same_thread en False porque si no SQLite se queja al usar hilos.
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 
-# 3. La 'SessionLocal' es una fábrica de conexiones. 
-# Cada vez que queramos leer o escribir algo, pediremos una sesión a esta fábrica.
+# 3. La 'SessionLocal' es mi fábrica de sesiones. 
+# Cada vez que quiera leer o guardar algo, le pediré una sesión a esta fábrica.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 4. 'Base' es la clase de la que heredarán todos nuestros modelos (tablas).
-# Es como el molde maestro para crear tablas en la base de datos.
+# 4. Mi 'Base' es de donde van a colgar todas mis tablas.
+# Es mi molde maestro para que SQLAlchemy sepa qué tablas tiene que crear.
 Base = declarative_base()
 
-# Esta función nos ayuda a abrir y cerrar la conexión automáticamente cada vez que la usamos.
+# Esta función me la he hecho para abrir y cerrar la conexión sola cada vez que la necesite.
 def get_db():
     db = SessionLocal()
     try:
