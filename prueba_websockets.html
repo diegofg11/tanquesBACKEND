@@ -48,6 +48,10 @@
             <h3>Control de Movimiento:</h3>
             <label>X: <input type="number" id="posX" value="0" style="width: 60px;"></label>
             <label>Y: <input type="number" id="posY" value="0" style="width: 60px;"></label>
+            <br><br>
+            <label>Rotación: <input type="range" id="rot" min="0" max="360" value="0"
+                    oninput="this.nextElementSibling.value = this.value"> <output>0</output>°</label>
+            <br><br>
             <button id="sendBtn" onclick="sendMovement()" disabled style="background: #007bff;">Enviar JSON</button>
         </div>
 
@@ -83,7 +87,7 @@
                     messageDiv.style.color = "#ffc107";
                     messageDiv.innerText = `[SISTEMA] ${data.contenido}`;
                 } else if (data.tipo === "movimiento") {
-                    messageDiv.innerHTML = `<b>${data.jugador}:</b> movido a X:${data.datos.x}, Y:${data.datos.y}`;
+                    messageDiv.innerHTML = `<b>${data.jugador}:</b> movido a X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°`;
                 }
 
                 messages.appendChild(messageDiv);
@@ -100,11 +104,13 @@
         function sendMovement() {
             const x = document.getElementById('posX').value;
             const y = document.getElementById('posY').value;
+            const rot = document.getElementById('rot').value;
 
             // Creamos el objeto JSON
             const payload = {
                 x: parseInt(x),
-                y: parseInt(y)
+                y: parseInt(y),
+                rotacion: parseInt(rot)
             };
 
             // Lo enviamos como texto (FastAPI lo recibirá y parseará como JSON)
