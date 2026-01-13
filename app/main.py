@@ -1,22 +1,24 @@
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, Depends
+from fastapi.middleware.cors import CORSMiddleware # Mi llave para dejar entrar peticiones web
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from app.database import engine, Base
-from app.models import user
-from app.api import users
-from app.api.game import manager 
-from app.schemas.game import TankState # Este es el filtro que me he creado para validar los datos
-from pydantic import ValidationError    # Lo necesito para capturar fallos en los datos
-
-# --- CONFIGURACIÓN DE MI BASE DE DATOS ---
-# Con esto hago que se creen las tablas automáticamente si no existen todavía.
-Base.metadata.create_all(bind=engine)
+# ... resto de imports ...
 
 # --- MI INSTANCIA PRINCIPAL ---
 app = FastAPI(
     title="Tanques API",
     description="Backend para mi juego de tanques",
     version="0.1.0"
+)
+
+# ME DOY PERMISOS DE CORS:
+# Esto es vital para que mi simulador HTML pueda registrar usuarios mediante peticiones HTTP.
+# Si no lo pongo, el navegador bloqueará mis intentos de registro por seguridad.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Por ahora dejo entrar a cualquiera, luego lo cerraré.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Aquí conecto mis rutas de usuarios (registro y login) al servidor principal
@@ -47,19 +49,32 @@ async def root():
         "doc_url": "/docs" # Mi chuleta de documentación automática
     }
 
-# --- MI LÓGICA DE WEBSOCKETS (CON MI FILTRO DE SEGURIDAD) ---
+# --- MI LÓGICA DE WEBSOCKETS (CON VERIFICACIÓN DE USUARIO) ---
 
 @app.websocket("/ws/game/{room_id}/{username}")
-async def game_websocket(websocket: WebSocket, room_id: str, username: str):
+async def game_websocket(websocket: WebSocket, room_id: str, username: str, db: Session = Depends(get_db)):
     """
     Aquí es donde gestiono la conexión de los tanques.
-    He metido validación con Pydantic para no volverme loco con errores de datos.
+    Ahora solo dejo pasar a los que estén registrados en mi base de datos.
     """
-    # 1. Meto al jugador en la sala que ha pedido.
-    # El conserje ahora también le mandará lo que hay en memoria nada más conectar.
-    await manager.connect(websocket, room_id)
+    # 1. Antes de nada, acepto la conexión técnica para poder hablar.
+    await websocket.accept()
+
+    # 2. MI CONTROL DE SEGURIDAD: Busco al usuario en mi base de datos SQL.
+    user_db = db.query(User).filter(User.username == username).first()
     
-    # 2. Lanzo un mensaje de sistema para avisar a los demás.
+    if not user_db:
+        # Si no lo encuentro, le mando un mensaje y chapo la conexión.
+        # Uso el código 4003 que significa "Violación de política".
+        print(f"DEBUG MÍO: Intento de entrada ilegal de '{username}'.")
+        await websocket.close(code=4003)
+        return
+
+    # 3. Si ha pasado el control, lo meto en la sala.
+    # El conserje ahora también le mandará lo que hay en memoria nada más conectar.
+    await manager.connect_already_accepted(websocket, room_id)
+    
+    # 4. Lanzo un mensaje de sistema para avisar a los demás.
     await manager.broadcast_to_room({
         "tipo": "sistema",
         "contenido": f"{username} se ha unido a mi partida en {room_id}"
@@ -67,41 +82,36 @@ async def game_websocket(websocket: WebSocket, room_id: str, username: str):
     
     try:
         while True:
-            # 3. Me quedo esperando a que el cliente me mande un JSON.
+            # 5. Me quedo esperando a que el cliente me mande un JSON.
             data = await websocket.receive_json()
             
             try:
-                # 4. PASO MI FILTRO:
+                # 6. PASO MI FILTRO:
                 estado_validado = TankState(**data)
                 
-                # 5. ¡AQUÍ GUARDO EN MI MEMORIA!
-                # Antes de repartirlo, me apunto dónde está este tanque para los que vengan luego.
+                # 7. ¡AQUÍ GUARDO EN MI MEMORIA!
                 manager.update_state(room_id, username, estado_validado.dict())
                 
-                # 6. Si los datos están bien, monto mi paquete para repartirlo.
+                # 8. Si los datos están bien, monto mi paquete para repartirlo.
                 paquete = {
                     "jugador": username,
                     "datos": estado_validado.dict(),
                     "tipo": "movimiento"
                 }
                 
-                # 7. Lo reenvío a toda la sala con total tranquilidad.
-                # Le paso mi propio websocket a 'exclude_self' para que no me devuelva mi propio movimiento.
+                # 9. Lo reenvío a toda la sala con total tranquilidad.
                 await manager.broadcast_to_room(paquete, room_id, exclude_self=websocket)
 
             except ValidationError as e:
-                # Si me mandan basura, paso del mensaje y lo imprimo en mi consola para verlo.
                 print(f"Ojo: {username} me ha mandado datos que no me valen: {e.json()}")
                 continue 
             
     except WebSocketDisconnect:
-        # Si alguien se desconecta, lo limpio de mi gestor (con su nombre para borrar su memoria).
         manager.disconnect(websocket, room_id, username)
         await manager.broadcast_to_room({
             "tipo": "sistema",
             "contenido": f"{username} se ha ido de la partida."
         }, room_id)
     except Exception as e:
-        # Error inesperado, saco al jugador por si acaso.
         print(f"Me ha petado el WebSocket de {username}: {e}")
         manager.disconnect(websocket, room_id, username)

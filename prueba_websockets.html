@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Prueba Tanques WebSocket</title>
+    <title>Tanques v2 - Simulador y Registro</title>
     <style>
         body {
             font-family: sans-serif;
@@ -17,101 +17,170 @@
             overflow-y: scroll;
             padding: 10px;
             background: #000;
+            margin-top: 10px;
+            border-radius: 4px;
         }
 
         input {
-            padding: 10px;
-            width: 70%;
+            padding: 8px;
+            margin: 5px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background: #444;
+            color: white;
         }
 
         button {
-            padding: 10px;
+            padding: 10px 15px;
             background: #28a745;
             color: white;
             border: none;
             cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        .section {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #555;
+        }
+
+        label {
+            display: inline-block;
+            width: 80px;
         }
     </style>
 </head>
 
 <body>
-    <h1>Simulador de Tanque v2 (Salas + JSON)</h1>
-    <div id="status">Desconectado</div>
-    <div style="margin-bottom: 20px;">
-        <input type="text" id="username" placeholder="Nombre de usuario" value="Tanque_1" style="width: 200px;">
-        <input type="text" id="room_id" placeholder="ID de la Sala" value="PARTIDA_1" style="width: 150px;">
-        <button onclick="connect()">Conectarse</button>
+    <h1>🎮 Mi Simulador de Tanques v2</h1>
+
+    <!-- I. MI ZONA DE REGISTRO (Nueva) -->
+    <div class="section">
+        <h3>🔑 1. Registro de mi Jugador</h3>
+        <p style="font-size: 0.9em; color: #aaa;">Primero tengo que crearme una cuenta si no la tengo.</p>
+        <input type="text" id="reg_username" placeholder="Nombre usuario">
+        <input type="password" id="reg_password" placeholder="Contraseña">
+        <button onclick="registerUser()" style="background: #007bff;">Crear Cuenta</button>
+        <div id="reg_status" style="margin-top: 10px; font-weight: bold;"></div>
     </div>
 
-    <div style="display: flex; gap: 20px;">
-        <div style="flex: 1;">
-            <h3>Control de Movimiento:</h3>
-            <label>X: <input type="number" id="posX" value="0" style="width: 60px;"></label>
-            <label>Y: <input type="number" id="posY" value="0" style="width: 60px;"></label>
-            <br><br>
-            <label>Rotación: <input type="range" id="rot" min="0" max="360" value="0"
-                    oninput="this.nextElementSibling.value = this.value"> <output>0</output>°</label>
-            <br><br>
-            <label>Vida (HP): <input type="range" id="hp" min="0" max="100" value="100"
-                    oninput="this.nextElementSibling.value = this.value"> <output>100</output>%</label>
-            <br><br>
-            <button id="sendBtn" onclick="sendMovement()" disabled style="background: #007bff;">Enviar JSON</button>
-        </div>
+    <!-- II. MI CONEXIÓN A LA PARTIDA -->
+    <div class="section">
+        <h3>🚀 2. Conexión al Juego</h3>
+        <input type="text" id="username" placeholder="Mi nombre registrado">
+        <input type="text" id="room_id" placeholder="ID de la Sala" value="PARTIDA_1">
+        <button onclick="connect()">Entrar a la Sala</button>
+        <div id="status" style="margin-top: 10px; font-weight: bold;">Estado: Desconectado</div>
+    </div>
 
-        <div style="flex: 2;">
-            <h3>Consola de la Sala:</h3>
-            <div id="messages"></div>
+    <!-- III. MI PANEL DE CONTROL -->
+    <div class="section">
+        <h3>🕹️ 3. Mis Mandos</h3>
+        <div>
+            <label>Pos (X):</label> <input type="range" id="posX" min="0" max="1000" value="500"> <br>
+            <label>Pos (Y):</label> <input type="range" id="posY" min="0" max="1000" value="500"> <br>
+            <label>Rotación:</label> <input type="range" id="rot" min="0" max="360" value="0"> <br>
+            <label>Vida (HP):</label> <input type="range" id="hp" min="0" max="100" value="100">
         </div>
+        <br>
+        <button id="sendBtn" onclick="sendMovement()" disabled style="width: 100%;">Mandar mi posición a los
+            demás</button>
+    </div>
+
+    <!-- IV. MI CONSOLA -->
+    <div class="section">
+        <h3>📝 Mi Consola de Partida</h3>
+        <div id="messages"></div>
     </div>
 
     <script>
-        // Aquí me guardo mi conexión para poder usarla en todas mis funciones.
+        // --- MI LÓGICA DE REGISTRO (HTTP) ---
+        async function registerUser() {
+            const user = document.getElementById('reg_username').value;
+            const pass = document.getElementById('reg_password').value;
+            const statusDiv = document.getElementById('reg_status');
+
+            statusDiv.innerText = "Mandando registro...";
+            statusDiv.style.color = "#eee";
+
+            try {
+                // Llamo a mi API por la vía normal (HTTP)
+                const response = await fetch('http://localhost:8000/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.innerText = `✅ ¡Hecho! El usuario '${user}' ya puede jugar.`;
+                    statusDiv.style.color = "#28a745";
+                } else {
+                    statusDiv.innerText = `❌ Fallo: ${data.detail || "Datos inválidos"}`;
+                    statusDiv.style.color = "#dc3545";
+                }
+            } catch (error) {
+                statusDiv.innerText = "❌ No hay respuesta del servidor. ¿Está encendido?";
+                statusDiv.style.color = "#dc3545";
+            }
+        }
+
+        // --- MI LÓGICA DE JUEGO (WEBSOCKTS) ---
         let ws;
 
         function connect() {
-            // SI YA ESTABA CONECTADO (por ejemplo, si le doy dos veces al botón), 
-            // cierro la conexión vieja para no tener cables duplicados y ver mensajes dobles.
-            if (ws) {
-                ws.close();
-            }
+            // Cierro lo viejo para no duplicar cables
+            if (ws) ws.close();
 
-            const username = document.getElementById('username').value;
+            const user = document.getElementById('username').value;
             const room = document.getElementById('room_id').value;
 
-            // Abro mi "tubería" (WebSocket) hacia el servidor.
-            ws = new WebSocket(`ws://localhost:8000/ws/game/${room}/${username}`);
+            // Intento abrir mi tubería de datos
+            ws = new WebSocket(`ws://localhost:8000/ws/game/${room}/${user}`);
 
-            // Este evento me salta cuando he logrado conectar bien.
             ws.onopen = function () {
-                document.getElementById('status').innerText = `Estoy en la sala ${room} como ${username}`;
+                document.getElementById('status').innerText = `Estado: ¡Dentro! Sala: ${room}`;
                 document.getElementById('status').style.color = "#28a745";
                 document.getElementById('sendBtn').disabled = false;
             };
 
-            // Aquí recibo los mensajes que el servidor reparte a la sala.
             ws.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 const messages = document.getElementById('messages');
-                const messageDiv = document.createElement('div');
+                const div = document.createElement('div');
 
                 if (data.tipo === "sistema") {
-                    messageDiv.style.color = "#ffc107";
-                    messageDiv.innerText = `[SISTEMA] ${data.contenido}`;
+                    div.style.color = "#ffc107";
+                    div.innerText = `[INFO] ${data.contenido}`;
                 } else if (data.tipo === "movimiento") {
-                    // Si el nombre del jugador es el mío, pongo un prefijo para saber que es mi "eco" del servidor.
+                    // Diferencio mis propios datos de los de mis rivales
                     const yo = document.getElementById('username').value;
-                    const prefijo = (data.jugador === yo) ? "MI ESTADO -> " : "";
+                    const esMiEco = (data.jugador === yo);
 
                     const colorVida = data.datos.vida > 30 ? '#28a745' : '#dc3545';
-                    messageDiv.innerHTML = `<b>${prefijo}${data.jugador}:</b> X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°, <b style="color: ${colorVida}">HP:${data.datos.vida}%</b>`;
+                    div.innerHTML = `<b>${esMiEco ? 'YO' : data.jugador}:</b> X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°, <b style="color: ${colorVida}">HP:${data.datos.vida}%</b>`;
                 }
 
-                messages.appendChild(messageDiv);
+                messages.appendChild(div);
                 messages.scrollTop = messages.scrollHeight;
             };
 
-            ws.onclose = function () {
-                document.getElementById('status').innerText = "Vaya, me he desconectado";
+            ws.onclose = function (event) {
+                // Si el servidor me echa con código 4003 es que no estoy registrado
+                if (event.code === 4003) {
+                    alert("¡Quieto! Ese nombre no está registrado. Créalo arriba primero.");
+                }
+                document.getElementById('status').innerText = "Estado: Desconectado";
                 document.getElementById('status').style.color = "#dc3545";
                 document.getElementById('sendBtn').disabled = true;
             };
@@ -124,23 +193,18 @@
             const vida = document.getElementById('hp').value;
 
             const payload = {
-                x: parseInt(x),
-                y: parseInt(y),
-                rotacion: parseInt(rot),
-                vida: parseInt(vida)
+                x: parseInt(x), y: parseInt(y),
+                rotacion: parseInt(rot), vida: parseInt(vida)
             };
 
-            // Convierto mi objeto a texto y lo mando por el cable.
             ws.send(JSON.stringify(payload));
 
-            // ¡AQUÍ MI MEJORA!: Pongo un mensaje local en mi consola para saber que he enviado los datos.
-            // Como el servidor ya no me devuelve el eco (para no gastar internet), esto me sirve de confirmación.
+            // Mi confirmación azul local
             const messages = document.getElementById('messages');
-            const messageDiv = document.createElement('div');
-            messageDiv.style.color = "#007bff"; // Un azul bonito para mis mensajes locales
-            messageDiv.innerHTML = `<i>[LOCAL] He enviado mi estado: X:${x}, Y:${y}, Rot:${rot}°, HP:${vida}%</i>`;
-
-            messages.appendChild(messageDiv);
+            const div = document.createElement('div');
+            div.style.color = "#007bff";
+            div.innerHTML = `<i>[LOCAL] He enviado mi posición...</i>`;
+            messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
         }
     </script>

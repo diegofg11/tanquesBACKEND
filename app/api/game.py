@@ -13,28 +13,27 @@ class ConnectionManager:
         # Estructura: { "id_sala": { "nombre_usuario": { "x": 0, "y": 0, ... } } }
         self.room_states: Dict[str, Dict[str, dict]] = {}
 
-    async def connect(self, websocket: WebSocket, room_id: str):
-        """Acepto la conexión y meto al tío en su habitación."""
-        await websocket.accept()
-        
-        # Si soy el primero en entrar a esta sala, la tengo que crear yo.
+    async def connect_already_accepted(self, websocket: WebSocket, room_id: str):
+        """
+        Meto al jugador en su habitación si ya he aceptado su cable antes.
+        Lo uso porque ahora primero verifico al usuario en mi base de datos.
+        """
+        # Si la sala no existe, la creo.
         if room_id not in self.active_rooms:
             self.active_rooms[room_id] = []
-            self.room_states[room_id] = {} # También inicializo la memoria de la sala
+            self.room_states[room_id] = {}
             
-        # Añado el cable (websocket) de este jugador a su lista.
+        # Lo añado a mi lista de hilos activos.
         self.active_rooms[room_id].append(websocket)
         
-        # AHORA: Le mando al nuevo jugador todo lo que tengo en mi memoria de esta sala.
-        # Así verá a los demás tanques nada más entrar.
+        # Le paso la posición de los que ya están.
         for existing_user, state in self.room_states[room_id].items():
             await websocket.send_json({
                 "jugador": existing_user,
                 "datos": state,
                 "tipo": "movimiento"
             })
-            
-        print(f"DEBUG MÍO: He unido a alguien a '{room_id}'. Ya somos {len(self.active_rooms[room_id])}")
+        print(f"DEBUG MÍO: Alguien verificado ha entrado a '{room_id}'.")
 
     def update_state(self, room_id: str, username: str, state: dict):
         """Guardo en mi memoria lo último que me ha dicho este tanque."""
