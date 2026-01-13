@@ -56,6 +56,7 @@ async def game_websocket(websocket: WebSocket, room_id: str, username: str):
     He metido validación con Pydantic para no volverme loco con errores de datos.
     """
     # 1. Meto al jugador en la sala que ha pedido.
+    # El conserje ahora también le mandará lo que hay en memoria nada más conectar.
     await manager.connect(websocket, room_id)
     
     # 2. Lanzo un mensaje de sistema para avisar a los demás.
@@ -71,18 +72,20 @@ async def game_websocket(websocket: WebSocket, room_id: str, username: str):
             
             try:
                 # 4. PASO MI FILTRO:
-                # Intento encajar lo que me ha llegado en mi molde TankState.
-                # Así me aseguro de que X, Y, rotación y vida son correctos.
                 estado_validado = TankState(**data)
                 
-                # 5. Si los datos están bien, monto mi paquete para repartirlo.
+                # 5. ¡AQUÍ GUARDO EN MI MEMORIA!
+                # Antes de repartirlo, me apunto dónde está este tanque para los que vengan luego.
+                manager.update_state(room_id, username, estado_validado.dict())
+                
+                # 6. Si los datos están bien, monto mi paquete para repartirlo.
                 paquete = {
                     "jugador": username,
                     "datos": estado_validado.dict(),
                     "tipo": "movimiento"
                 }
                 
-                # 6. Lo reenvío a toda la sala con total tranquilidad.
+                # 7. Lo reenvío a toda la sala con total tranquilidad.
                 await manager.broadcast_to_room(paquete, room_id)
 
             except ValidationError as e:
@@ -91,8 +94,8 @@ async def game_websocket(websocket: WebSocket, room_id: str, username: str):
                 continue 
             
     except WebSocketDisconnect:
-        # Si alguien se desconecta, lo limpio de mi gestor y aviso a la sala.
-        manager.disconnect(websocket, room_id)
+        # Si alguien se desconecta, lo limpio de mi gestor (con su nombre para borrar su memoria).
+        manager.disconnect(websocket, room_id, username)
         await manager.broadcast_to_room({
             "tipo": "sistema",
             "contenido": f"{username} se ha ido de la partida."
@@ -100,4 +103,4 @@ async def game_websocket(websocket: WebSocket, room_id: str, username: str):
     except Exception as e:
         # Error inesperado, saco al jugador por si acaso.
         print(f"Me ha petado el WebSocket de {username}: {e}")
-        manager.disconnect(websocket, room_id)
+        manager.disconnect(websocket, room_id, username)
