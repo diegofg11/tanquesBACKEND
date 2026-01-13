@@ -53,18 +53,18 @@ async def root():
 # --- WEBSOCKETS PARA EL MULTIJUGADOR ---
 
 # Nueva ruta: ws://localhost:8000/ws/game/SALA_1/diego
+# {room_id} y {username} son variables que FastAPI saca de la URL automáticamente.
 @app.websocket("/ws/game/{room_id}/{username}")
 async def game_websocket(websocket: WebSocket, room_id: str, username: str):
     """
     Punto de conexión mejorado con salas y JSON.
-    1. Se une a una sala específica (room_id).
-    2. Recibe mensajes JSON (ej: {"x": 100, "y": 200}).
-    3. Reenvía el JSON a todos en esa misma sala.
+    Esta función se ejecuta cuando un tanque (ya sea HTML o Unity) se conecta.
     """
+    # 1. Registramos al jugador en la sala que ha pedido.
     await manager.connect(websocket, room_id)
     
-    # Mensaje inicial de sistema en formato JSON para que el cliente no explote
-    # esperando datos estructurados.
+    # 2. Enviamos un primer mensaje de bienvenida tipo JSON.
+    # Es importante que sea JSON para que el cliente (Unity/Web) siempre reciba el mismo formato.
     await manager.broadcast_to_room({
         "tipo": "sistema",
         "contenido": f"{username} ha entrado a la sala {room_id}"
@@ -72,29 +72,32 @@ async def game_websocket(websocket: WebSocket, room_id: str, username: str):
     
     try:
         while True:
-            # Ahora esperamos recibir un JSON directamente
-            # Si el cliente envía algo que no es JSON, FastAPI lanzará un error aquí.
+            # 3. Nos quedamos "escuchando" hasta que el tanque mande algo (movimiento, disparo...).
+            # receive_json() es genial porque valida que lo que llegue sea un JSON válido.
             data = await websocket.receive_json()
             
-            # Preparamos el paquete de datos para reenviar
-            # Le añadimos quién lo envió para que los demás sepan qué tanque se mueve
+            # 4. Preparamos el "paquete certificado". 
+            # Le ponemos el nombre del jugador para que los demás sepan de quién es el mensaje.
             paquete = {
                 "jugador": username,
-                "datos": data, # Aquí dentro irán la X, Y, rotación, etc.
+                "datos": data, # Aquí dentro van x, y, rotacion, vida... lo que el cliente decidió mandar.
                 "tipo": "movimiento"
             }
             
-            # Reenviamos SOLO a los de su sala
+            # 5. La "Magia": Reenviamos este paquete a TODOS los de la sala (menos al que lo envió, 
+            # aunque en esta versión simple se lo mandamos a todos para confirmar).
             await manager.broadcast_to_room(paquete, room_id)
             
     except WebSocketDisconnect:
+        # Se ejecuta si el jugador cierra la pestaña o pierde la conexión.
         manager.disconnect(websocket, room_id)
         await manager.broadcast_to_room({
             "tipo": "sistema",
             "contenido": f"{username} ha salido de la partida."
         }, room_id)
     except Exception as e:
-        print(f"Error en WebSocket: {e}")
+        # Si ocurre un error inesperado (como mandar un JSON mal formado).
+        print(f"Error en WebSocket para {username}: {e}")
         manager.disconnect(websocket, room_id)
 
 # --------------------------------------

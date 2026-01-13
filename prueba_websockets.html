@@ -52,6 +52,9 @@
             <label>Rotación: <input type="range" id="rot" min="0" max="360" value="0"
                     oninput="this.nextElementSibling.value = this.value"> <output>0</output>°</label>
             <br><br>
+            <label>Vida (HP): <input type="range" id="hp" min="0" max="100" value="100"
+                    oninput="this.nextElementSibling.value = this.value"> <output>100</output>%</label>
+            <br><br>
             <button id="sendBtn" onclick="sendMovement()" disabled style="background: #007bff;">Enviar JSON</button>
         </div>
 
@@ -62,38 +65,49 @@
     </div>
 
     <script>
+        // Guardamos la conexión aquí para poder usarla en todas las funciones.
         let ws;
 
         function connect() {
             const username = document.getElementById('username').value;
             const room = document.getElementById('room_id').value;
 
-            // Nueva URL con sala y usuario
+            // Abrimos la "tubería" (WebSocket) hacia el servidor.
+            // La URL ahora incluye la sala y el nombre para que el servidor nos identifique.
             ws = new WebSocket(`ws://localhost:8000/ws/game/${room}/${username}`);
 
+            // Este evento se dispara cuando la conexión se abre correctamente.
             ws.onopen = function () {
                 document.getElementById('status').innerText = `Conectado a ${room} como ${username}`;
                 document.getElementById('status').style.color = "#28a745";
                 document.getElementById('sendBtn').disabled = false;
             };
 
+            // Aquí recibimos los mensajes que el servidor "reparte" a la sala.
             ws.onmessage = function (event) {
+                // Convertimos el texto JSON que viene del servidor en un objeto JavaScript.
                 const data = JSON.parse(event.data);
                 const messages = document.getElementById('messages');
                 const messageDiv = document.createElement('div');
 
-                // Coloreamos según el tipo de mensaje
+                // Lógica para mostrar los mensajes según su tipo:
                 if (data.tipo === "sistema") {
+                    // Mensajes de entrada/salida de jugadores (color amarillo).
                     messageDiv.style.color = "#ffc107";
                     messageDiv.innerText = `[SISTEMA] ${data.contenido}`;
                 } else if (data.tipo === "movimiento") {
-                    messageDiv.innerHTML = `<b>${data.jugador}:</b> movido a X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°`;
+                    // Datos de otro tanque (X, Y, Rotación y Vida).
+                    // Usamos colores para que la vida sea más fácil de vigilar.
+                    const colorVida = data.datos.vida > 30 ? '#28a745' : '#dc3545';
+                    messageDiv.innerHTML = `<b>${data.jugador}:</b> movido a X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°, <b style="color: ${colorVida}">HP:${data.datos.vida}%</b>`;
                 }
 
+                // Añadimos el mensaje a la consola y hacemos scroll hacia abajo.
                 messages.appendChild(messageDiv);
                 messages.scrollTop = messages.scrollHeight;
             };
 
+            // Si el servidor se apaga o perdemos internet, avisamos al usuario.
             ws.onclose = function () {
                 document.getElementById('status').innerText = "Desconectado";
                 document.getElementById('status').style.color = "#dc3545";
@@ -101,19 +115,25 @@
             };
         }
 
+        /**
+         * Esta función empaqueta el estado actual del tanque en un JSON
+         * y lo lanza por el WebSocket para que los demás lo vean.
+         */
         function sendMovement() {
             const x = document.getElementById('posX').value;
             const y = document.getElementById('posY').value;
             const rot = document.getElementById('rot').value;
+            const vida = document.getElementById('hp').value;
 
-            // Creamos el objeto JSON
+            // Creamos el "contrato" de datos que compartiremos con Unity y otros clientes.
             const payload = {
                 x: parseInt(x),
                 y: parseInt(y),
-                rotacion: parseInt(rot)
+                rotacion: parseInt(rot),
+                vida: parseInt(vida)
             };
 
-            // Lo enviamos como texto (FastAPI lo recibirá y parseará como JSON)
+            // JSON.stringify convierte el objeto anterior en texto para poder enviarlo.
             ws.send(JSON.stringify(payload));
         }
     </script>
