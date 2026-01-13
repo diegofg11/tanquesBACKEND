@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Prueba Tanques WebSocket</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #222;
+            color: #eee;
+            padding: 20px;
+        }
+
+        #messages {
+            border: 1px solid #444;
+            height: 300px;
+            overflow-y: scroll;
+            padding: 10px;
+            background: #000;
+        }
+
+        input {
+            padding: 10px;
+            width: 70%;
+        }
+
+        button {
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Simulador de Tanque v2 (Salas + JSON)</h1>
+    <div id="status">Desconectado</div>
+    <div style="margin-bottom: 20px;">
+        <input type="text" id="username" placeholder="Nombre de usuario" value="Tanque_1" style="width: 200px;">
+        <input type="text" id="room_id" placeholder="ID de la Sala" value="PARTIDA_1" style="width: 150px;">
+        <button onclick="connect()">Conectarse</button>
+    </div>
+
+    <div style="display: flex; gap: 20px;">
+        <div style="flex: 1;">
+            <h3>Control de Movimiento:</h3>
+            <label>X: <input type="number" id="posX" value="0" style="width: 60px;"></label>
+            <label>Y: <input type="number" id="posY" value="0" style="width: 60px;"></label>
+            <button id="sendBtn" onclick="sendMovement()" disabled style="background: #007bff;">Enviar JSON</button>
+        </div>
+
+        <div style="flex: 2;">
+            <h3>Consola de la Sala:</h3>
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+
+        function connect() {
+            const username = document.getElementById('username').value;
+            const room = document.getElementById('room_id').value;
+
+            // Nueva URL con sala y usuario
+            ws = new WebSocket(`ws://localhost:8000/ws/game/${room}/${username}`);
+
+            ws.onopen = function () {
+                document.getElementById('status').innerText = `Conectado a ${room} como ${username}`;
+                document.getElementById('status').style.color = "#28a745";
+                document.getElementById('sendBtn').disabled = false;
+            };
+
+            ws.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                const messages = document.getElementById('messages');
+                const messageDiv = document.createElement('div');
+
+                // Coloreamos según el tipo de mensaje
+                if (data.tipo === "sistema") {
+                    messageDiv.style.color = "#ffc107";
+                    messageDiv.innerText = `[SISTEMA] ${data.contenido}`;
+                } else if (data.tipo === "movimiento") {
+                    messageDiv.innerHTML = `<b>${data.jugador}:</b> movido a X:${data.datos.x}, Y:${data.datos.y}`;
+                }
+
+                messages.appendChild(messageDiv);
+                messages.scrollTop = messages.scrollHeight;
+            };
+
+            ws.onclose = function () {
+                document.getElementById('status').innerText = "Desconectado";
+                document.getElementById('status').style.color = "#dc3545";
+                document.getElementById('sendBtn').disabled = true;
+            };
+        }
+
+        function sendMovement() {
+            const x = document.getElementById('posX').value;
+            const y = document.getElementById('posY').value;
+
+            // Creamos el objeto JSON
+            const payload = {
+                x: parseInt(x),
+                y: parseInt(y)
+            };
+
+            // Lo enviamos como texto (FastAPI lo recibirá y parseará como JSON)
+            ws.send(JSON.stringify(payload));
+        }
+    </script>
+</body>
+
+</html>
