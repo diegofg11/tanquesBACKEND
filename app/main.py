@@ -98,5 +98,3 @@ async def game_websocket(websocket: WebSocket, room_id: str, username: str):
         manager.disconnect(websocket, room_id)
 
 # --------------------------------------
-
-# Nota para el futuro: Aquí es donde conectaremos las rutas de usuarios y los WebSockets.
