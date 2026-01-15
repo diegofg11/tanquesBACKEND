@@ -17,3 +17,9 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Modelo para recibir los datos de la partida al terminar
+class ScoreSubmission(BaseModel):
+    tiempo_segundos: int
+    daño_recibido: int
+    nivel_alcanzado: int # 1, 2 o 3 (3 es victoria)

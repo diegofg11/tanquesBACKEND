@@ -102,7 +102,31 @@
         <div id="messages"></div>
     </div>
 
+    <!-- V. MI SISTEMA DE PUNTUACIÓN (NUEVO) -->
+    <div class="section">
+        <h3>🏆 4. Ranking y Puntuación</h3>
+        <div>
+            <h4>Simular Fin de Partida</h4>
+            <input type="number" id="time_taken" placeholder="Tiempo (seg)" value="120">
+            <input type="number" id="damage_taken" placeholder="Daño Recibido" value="50">
+            <select id="level_reached">
+                <option value="1">Nivel 1</option>
+                <option value="2">Nivel 2</option>
+                <option value="3" selected>Nivel 3 (Victoria)</option>
+            </select>
+            <button onclick="submitScore()">Enviar Puntuación</button>
+            <div id="score_result" style="color: #bbb; margin-top: 5px;"></div>
+        </div>
+        <hr style="border-color: #555;">
+        <div>
+            <h4>Top 10 Jugadores</h4>
+            <button onclick="getLeaderboard()" style="background: #e0a800;">🔄 Actualizar Tabla</button>
+            <ul id="leaderboard_list" style="background: #111; padding: 10px; list-style: none;"></ul>
+        </div>
+    </div>
+
     <script>
+        // ... (Lógica de registro y websocket existente) ...
         // --- MI LÓGICA DE REGISTRO (HTTP) ---
         async function registerUser() {
             const user = document.getElementById('reg_username').value;
@@ -206,6 +230,60 @@
             div.innerHTML = `<i>[LOCAL] He enviado mi posición...</i>`;
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
+        }
+
+        // --- MI LÓGICA DE RANKING (NUEVA) ---
+        async function submitScore() {
+            const user = document.getElementById('reg_username').value || document.getElementById('username').value; // Intenta pillar el usuario de arriba
+            if(!user) { alert("Pon un nombre de usuario arriba primero"); return; }
+            
+            const time = parseInt(document.getElementById('time_taken').value);
+            const dmg = parseInt(document.getElementById('damage_taken').value);
+            const level = parseInt(document.getElementById('level_reached').value);
+            
+            try {
+                const res = await fetch(`http://localhost:8000/users/${user}/submit-score`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ tiempo_segundos: time, daño_recibido: dmg, nivel_alcanzado: level })
+                });
+                const data = await res.json();
+                
+                let msg = `Puntos: ${data.score_partida}. `;
+                if(data.nuevo_record) msg += "🎉 NUEVO RÉCORD!";
+                else msg += `(Récord actual: ${data.high_score_actual})`;
+                
+                document.getElementById('score_result').innerText = msg;
+                getLeaderboard(); // Actualizo la tabla ya que estamos
+            } catch(e) {
+                console.error(e);
+                alert("Error enviando puntuación");
+            }
+        }
+
+        async function getLeaderboard() {
+            try {
+                const res = await fetch('http://localhost:8000/users/ranking/top');
+                const data = await res.json();
+                const list = document.getElementById('leaderboard_list');
+                list.innerHTML = ""; // Limpio la lista
+                
+                data.forEach((player, index) => {
+                    const li = document.createElement('li');
+                    li.style.padding = "5px";
+                    li.style.borderBottom = "1px solid #333";
+                    // Pongo medallas a los 3 primeros
+                    let prefix = `#${index+1}`;
+                    if(index===0) prefix = "🥇";
+                    if(index===1) prefix = "🥈";
+                    if(index===2) prefix = "🥉";
+                    
+                    li.innerText = `${prefix} ${player.username}: ${player.score} pts`;
+                    list.appendChild(li);
+                });
+            } catch(e) {
+                console.error(e);
+            }
         }
     </script>
 </body>

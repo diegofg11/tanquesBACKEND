@@ -180,3 +180,47 @@ public class GameNetwork : MonoBehaviour
     }
 }
 ```
+
+---
+
+## 4. Sistema de Ranking
+
+### A. Estructuras de Datos (Ranking)
+
+```csharp
+[Serializable]
+public class ScoreSubmission
+{
+    public int tiempo_segundos;
+    public int daño_recibido;
+    public int nivel_alcanzado; // 1, 2, o 3
+}
+
+[Serializable]
+public class RankingItem
+{
+    public string username;
+    public int score;
+}
+```
+
+### B. Ejemplo: Enviar Puntuación (Al terminar partida)
+
+```csharp
+// Método dentro de tu BackendConnector.cs o GameManager.cs
+IEnumerator SubmitScore(string username, int tiempo, int daño, int nivel)
+{
+    string url = baseUrl + "/users/" + username + "/submit-score";
+    
+    ScoreSubmission data = new ScoreSubmission 
+    { 
+        tiempo_segundos = tiempo, 
+        daño_recibido = daño, 
+        nivel_alcanzado = nivel 
+    };
+    
+    // ... Creación de UnityWebRequest igual que el Login ...
+    // ... SendWebRequest() ...
+}
+```
+```
