@@ -9,14 +9,11 @@ Este documento sirve como referencia para conectar tu proyecto de Unity con este
 
 ### URLs del Servidor
 *   **Local (Tu PC):** `http://127.0.0.1:8000`
-*   **WebSocket Local:** `ws://127.0.0.1:8000/ws/game/{SALA}/{USUARIO}`
 *   **Nube (Futuro):** *Aquí pondrás la URL cuando lo subas a Render/Heroku*
 
 ### Librerías Necesarias en Unity
 *   **JsonUtility** (Viene con Unity): Para convertir objetos a texto y viceversa.
-*   **UnityWebRequest** (Viene con Unity): Para Login/Registro.
-*   **NativeWebSocket** (Descargar de GitHub): Necesaria porque los WebSockets de Unity por defecto son limitados.
-    *   *Link:* https://github.com/endel/NativeWebSocket
+*   **UnityWebRequest** (Viene con Unity): Para todas las peticiones (Login, Ranking).
 
 ---
 
@@ -43,29 +40,26 @@ public class UserResponse
 }
 
 [Serializable]
-public class TankState
+public class ScoreSubmission
 {
-    public int x;
-    public int y;
-    public int rotacion;
-    public int vida;
+    public int tiempo_segundos;
+    public int daño_recibido;
+    public int nivel_alcanzado; // 1, 2, o 3
 }
 
 [Serializable]
-public class GameMessage
+public class RankingItem
 {
-    public string tipo;      // "movimiento", "sistema", etc.
-    public string jugador;   // Nombre del usuario que manda el dato
-    public TankState datos;  // Sus coordenadas
-    public string contenido; // Solo para mensajes de texto (sistema)
+    public string username;
+    public int score;
 }
 ```
 
 ---
 
-## 3. Ejemplo de Script de Conexión (GameManager.cs)
+## 3. Ejemplos de Scripts (GameManager.cs)
 
-### A. Login y Registro (HTTP)
+### A. Login y Registro
 
 ```csharp
 using UnityEngine;
@@ -113,70 +107,32 @@ public class BackendConnector : MonoBehaviour
 }
 ```
 
-### B. Juego en Tiempo Real (WebSockets)
+### B. Enviar Puntuación (Al terminar)
 
 ```csharp
-using UnityEngine;
-using NativeWebSocket;
-
-public class GameNetwork : MonoBehaviour
+IEnumerator SubmitScore(string username, int tiempo, int daño, int nivel)
 {
-    WebSocket websocket;
-    public string roomId = "Sala1";
-    public string myUsername = "Player1"; // Esto vendría del Login
+    string url = baseUrl + "/users/" + username + "/submit-score";
+    
+    ScoreSubmission data = new ScoreSubmission 
+    { 
+        tiempo_segundos = tiempo, 
+        daño_recibido = daño, 
+        nivel_alcanzado = nivel 
+    };
+    
+    string jsonData = JsonUtility.ToJson(data);
+    var request = new UnityWebRequest(url, "POST");
+    byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
+    request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+    request.downloadHandler = new DownloadHandlerBuffer();
+    request.SetRequestHeader("Content-Type", "application/json");
 
-    async void Start()
+    yield return request.SendWebRequest();
+    
+    if (request.result == UnityWebRequest.Result.Success)
     {
-        // Conexión
-        string url = $"ws://127.0.0.1:8000/ws/game/{roomId}/{myUsername}";
-        websocket = new WebSocket(url);
-
-        websocket.OnOpen += () => Debug.Log("Conectado al servidor!");
-        websocket.OnError += (e) => Debug.Log("Error: " + e);
-        websocket.OnClose += (e) => Debug.Log("Desconectado");
-
-        websocket.OnMessage += (bytes) =>
-        {
-            // RECIBIR DATOS
-            string message = System.Text.Encoding.UTF8.GetString(bytes);
-            GameMessage msg = JsonUtility.FromJson<GameMessage>(message);
-
-            if (msg.tipo == "movimiento" && msg.jugador != myUsername)
-            {
-                Debug.Log($"El jugador {msg.jugador} se ha movido a {msg.datos.x}, {msg.datos.y}");
-                // AQUÍ: Actualizar la posición del objeto Unity enemigo
-            }
-        };
-
-        await websocket.Connect();
-    }
-
-    void Update()
-    {
-        #if !UNITY_WEBGL || UNITY_EDITOR
-            websocket.DispatchMessageQueue();
-        #endif
-        
-        // ENVIAR MOVIMIENTO (Ejemplo simple)
-        if (Input.GetKeyDown(KeyCode.Space)) 
-        {
-            TankState miEstado = new TankState { x = 10, y = 10, rotacion = 90, vida = 100 };
-            SendState(miEstado);
-        }
-    }
-
-    async void SendState(TankState state)
-    {
-        if (websocket.State == WebSocketState.Open)
-        {
-            string json = JsonUtility.ToJson(state);
-            await websocket.SendText(json);
-        }
-    }
-
-    private async void OnApplicationQuit()
-    {
-        await websocket.Close();
+       Debug.Log("Puntos enviados: " + request.downloadHandler.text);
     }
 }
 ```

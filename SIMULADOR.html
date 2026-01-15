@@ -73,38 +73,9 @@
         <div id="reg_status" style="margin-top: 10px; font-weight: bold;"></div>
     </div>
 
-    <!-- II. MI CONEXIÓN A LA PARTIDA -->
+    <!-- II. MI SISTEMA DE PUNTUACIÓN -->
     <div class="section">
-        <h3>🚀 2. Conexión al Juego</h3>
-        <input type="text" id="username" placeholder="Mi nombre registrado">
-        <input type="text" id="room_id" placeholder="ID de la Sala" value="PARTIDA_1">
-        <button onclick="connect()">Entrar a la Sala</button>
-        <div id="status" style="margin-top: 10px; font-weight: bold;">Estado: Desconectado</div>
-    </div>
-
-    <!-- III. MI PANEL DE CONTROL -->
-    <div class="section">
-        <h3>🕹️ 3. Mis Mandos</h3>
-        <div>
-            <label>Pos (X):</label> <input type="range" id="posX" min="0" max="1000" value="500"> <br>
-            <label>Pos (Y):</label> <input type="range" id="posY" min="0" max="1000" value="500"> <br>
-            <label>Rotación:</label> <input type="range" id="rot" min="0" max="360" value="0"> <br>
-            <label>Vida (HP):</label> <input type="range" id="hp" min="0" max="100" value="100">
-        </div>
-        <br>
-        <button id="sendBtn" onclick="sendMovement()" disabled style="width: 100%;">Mandar mi posición a los
-            demás</button>
-    </div>
-
-    <!-- IV. MI CONSOLA -->
-    <div class="section">
-        <h3>📝 Mi Consola de Partida</h3>
-        <div id="messages"></div>
-    </div>
-
-    <!-- V. MI SISTEMA DE PUNTUACIÓN (NUEVO) -->
-    <div class="section">
-        <h3>🏆 4. Ranking y Puntuación</h3>
+        <h3>🏆 2. Ranking y Puntuación</h3>
         <div>
             <h4>Simular Fin de Partida</h4>
             <input type="number" id="time_taken" placeholder="Tiempo (seg)" value="120">
@@ -125,8 +96,13 @@
         </div>
     </div>
 
+    <!-- III. CONSOLA -->
+    <div class="section">
+        <h3>📝 Estado</h3>
+        <div id="messages"></div>
+    </div>
+
     <script>
-        // ... (Lógica de registro y websocket existente) ...
         // --- MI LÓGICA DE REGISTRO (HTTP) ---
         async function registerUser() {
             const user = document.getElementById('reg_username').value;
@@ -137,7 +113,6 @@
             statusDiv.style.color = "#eee";
 
             try {
-                // Llamo a mi API por la vía normal (HTTP)
                 const response = await fetch('http://localhost:8000/users/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -159,103 +134,30 @@
             }
         }
 
-        // --- MI LÓGICA DE JUEGO (WEBSOCKTS) ---
-        let ws;
-
-        function connect() {
-            // Cierro lo viejo para no duplicar cables
-            if (ws) ws.close();
-
-            const user = document.getElementById('username').value;
-            const room = document.getElementById('room_id').value;
-
-            // Intento abrir mi tubería de datos
-            ws = new WebSocket(`ws://localhost:8000/ws/game/${room}/${user}`);
-
-            ws.onopen = function () {
-                document.getElementById('status').innerText = `Estado: ¡Dentro! Sala: ${room}`;
-                document.getElementById('status').style.color = "#28a745";
-                document.getElementById('sendBtn').disabled = false;
-            };
-
-            ws.onmessage = function (event) {
-                const data = JSON.parse(event.data);
-                const messages = document.getElementById('messages');
-                const div = document.createElement('div');
-
-                if (data.tipo === "sistema") {
-                    div.style.color = "#ffc107";
-                    div.innerText = `[INFO] ${data.contenido}`;
-                } else if (data.tipo === "movimiento") {
-                    // Diferencio mis propios datos de los de mis rivales
-                    const yo = document.getElementById('username').value;
-                    const esMiEco = (data.jugador === yo);
-
-                    const colorVida = data.datos.vida > 30 ? '#28a745' : '#dc3545';
-                    div.innerHTML = `<b>${esMiEco ? 'YO' : data.jugador}:</b> X:${data.datos.x}, Y:${data.datos.y}, Rot:${data.datos.rotacion}°, <b style="color: ${colorVida}">HP:${data.datos.vida}%</b>`;
-                }
-
-                messages.appendChild(div);
-                messages.scrollTop = messages.scrollHeight;
-            };
-
-            ws.onclose = function (event) {
-                // Si el servidor me echa con código 4003 es que no estoy registrado
-                if (event.code === 4003) {
-                    alert("¡Quieto! Ese nombre no está registrado. Créalo arriba primero.");
-                }
-                document.getElementById('status').innerText = "Estado: Desconectado";
-                document.getElementById('status').style.color = "#dc3545";
-                document.getElementById('sendBtn').disabled = true;
-            };
-        }
-
-        function sendMovement() {
-            const x = document.getElementById('posX').value;
-            const y = document.getElementById('posY').value;
-            const rot = document.getElementById('rot').value;
-            const vida = document.getElementById('hp').value;
-
-            const payload = {
-                x: parseInt(x), y: parseInt(y),
-                rotacion: parseInt(rot), vida: parseInt(vida)
-            };
-
-            ws.send(JSON.stringify(payload));
-
-            // Mi confirmación azul local
-            const messages = document.getElementById('messages');
-            const div = document.createElement('div');
-            div.style.color = "#007bff";
-            div.innerHTML = `<i>[LOCAL] He enviado mi posición...</i>`;
-            messages.appendChild(div);
-            messages.scrollTop = messages.scrollHeight;
-        }
-
-        // --- MI LÓGICA DE RANKING (NUEVA) ---
+        // --- MI LÓGICA DE RANKING ---
         async function submitScore() {
-            const user = document.getElementById('reg_username').value || document.getElementById('username').value; // Intenta pillar el usuario de arriba
-            if(!user) { alert("Pon un nombre de usuario arriba primero"); return; }
-            
+            const user = document.getElementById('reg_username').value;
+            if (!user) { alert("Pon un nombre de usuario arriba primero"); return; }
+
             const time = parseInt(document.getElementById('time_taken').value);
             const dmg = parseInt(document.getElementById('damage_taken').value);
             const level = parseInt(document.getElementById('level_reached').value);
-            
+
             try {
                 const res = await fetch(`http://localhost:8000/users/${user}/submit-score`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tiempo_segundos: time, daño_recibido: dmg, nivel_alcanzado: level })
                 });
                 const data = await res.json();
-                
+
                 let msg = `Puntos: ${data.score_partida}. `;
-                if(data.nuevo_record) msg += "🎉 NUEVO RÉCORD!";
+                if (data.nuevo_record) msg += "🎉 NUEVO RÉCORD!";
                 else msg += `(Récord actual: ${data.high_score_actual})`;
-                
+
                 document.getElementById('score_result').innerText = msg;
-                getLeaderboard(); // Actualizo la tabla ya que estamos
-            } catch(e) {
+                getLeaderboard();
+            } catch (e) {
                 console.error(e);
                 alert("Error enviando puntuación");
             }
@@ -266,22 +168,21 @@
                 const res = await fetch('http://localhost:8000/users/ranking/top');
                 const data = await res.json();
                 const list = document.getElementById('leaderboard_list');
-                list.innerHTML = ""; // Limpio la lista
-                
+                list.innerHTML = "";
+
                 data.forEach((player, index) => {
                     const li = document.createElement('li');
                     li.style.padding = "5px";
                     li.style.borderBottom = "1px solid #333";
-                    // Pongo medallas a los 3 primeros
-                    let prefix = `#${index+1}`;
-                    if(index===0) prefix = "🥇";
-                    if(index===1) prefix = "🥈";
-                    if(index===2) prefix = "🥉";
-                    
+                    let prefix = `#${index + 1}`;
+                    if (index === 0) prefix = "🥇";
+                    if (index === 1) prefix = "🥈";
+                    if (index === 2) prefix = "🥉";
+
                     li.innerText = `${prefix} ${player.username}: ${player.score} pts`;
                     list.appendChild(li);
                 });
-            } catch(e) {
+            } catch (e) {
                 console.error(e);
             }
         }
