@@ -1,10 +1,10 @@
-# He quitado SQLAlchemy porque ahora usamos Firestore (NoSQL).
-# En Firestore, los datos se guardan como documentos (como JSON/Diccionarios).
+"""
+Definición del modelo de Usuario.
+"""
 
 class User:
     """
-    Esta clase representa a un usuario en mi juego.
-    Ya no es una tabla rígida de SQL, es mi guía para saber qué tiene cada usuario.
+    Representación de un usuario para Firestore (NoSQL).
     """
     def __init__(self, username: str, hashed_password: str, is_active: bool = True, score: int = 0):
         self.username = username
@@ -14,7 +14,7 @@ class User:
 
     def to_dict(self):
         """
-        Convierto el objeto a un diccionario para guardarlo fácil en Firestore.
+        Serializa el objeto User a un diccionario para Firestore.
         """
         return {
             "username": self.username,
@@ -26,7 +26,7 @@ class User:
     @staticmethod
     def from_dict(data: dict):
         """
-        Creo un objeto User a partir de lo que me devuelva Firebase.
+        Deserializa un diccionario de Firestore a un objeto User.
         """
         return User(
             username=data.get("username"),

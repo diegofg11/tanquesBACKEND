@@ -1,14 +1,18 @@
+"""
+Módulo principal de la aplicación FastAPI.
+Configura la instancia de la aplicación, los middlewares CORS y las rutas.
+"""
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.api import users
 
-# --- MI INSTANCIA PRINCIPAL ---
+# --- INSTANCIA PRINCIPAL ---
 app = FastAPI(
     title="Tanques API",
-    description="Backend para mi juego de tanques (Single Player) con Firebase Firestore",
-    version="0.3.0"
+    description="API REST para el juego de Tanques (Single Player) utilizando Firebase Firestore como backend.",
+    version="1.0.0"
 )
 
 # ME DOY PERMISOS DE CORS:

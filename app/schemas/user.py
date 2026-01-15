@@ -1,16 +1,17 @@
+"""
+Esquemas Pydantic para validación de datos de entrada/salida de la API.
+"""
 from pydantic import BaseModel
-from typing import Optional
 
-# Me creo estos 'Schemas' para validar los datos que entran y salen de mi API.
-# Son distintos a mis 'Models' porque estos solo me sirven para comprobar formatos.
+# --- Esquemas de Usuario ---
 
-# Aquí defino lo que le pido a alguien cuando quiera registrarse en mi juego.
 class UserCreate(BaseModel):
+    """Esquema para el registro de usuarios."""
     username: str
     password: str
 
-# Aquí decido qué datos voy a ENVIAR de vuelta cuando alguien me pregunte por un usuario.
 class UserOut(BaseModel):
+    """Esquema para mostrar datos públicos del usuario."""
     username: str
     is_active: bool
     score: int
@@ -18,8 +19,12 @@ class UserOut(BaseModel):
     class Config:
         from_attributes = True
 
-# Modelo para recibir los datos de la partida al terminar
+# --- Esquemas de Puntuación ---
+
 class ScoreSubmission(BaseModel):
+    """
+    Esquema para recibir estadísticas de final de partida.
+    """
     tiempo_segundos: int
     daño_recibido: int
     nivel_alcanzado: int # 1, 2 o 3 (3 es victoria)

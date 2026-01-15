@@ -1,7 +1,10 @@
+"""
+Utilidades de seguridad para el hash y verificación de contraseñas.
+"""
 from passlib.context import CryptContext
 
-# 1. Configuro cómo voy a encriptar las contraseñas.
-# Me he decantado por 'pbkdf2_sha256' porque me va bien con Windows y Python 3.13.
+# Configuración del contexto de criptografía.
+# Se utiliza el esquema pbkdf2_sha256.
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 def verify_password(plain_password, hashed_password):
