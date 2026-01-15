@@ -1,29 +1,28 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+import firebase_admin
+from firebase_admin import credentials, firestore
+import os
 
-# 1. Aquí digo dónde voy a guardar mis datos.
-# He elegido SQLite para que se me cree un archivo 'sql_app.db' aquí mismo y sea fácil de manejar.
-SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
+# 1. Busco mi llave de Firebase (el archivo .json que te has bajado)
+# Asumo que se llama 'firebase-key.json' y está en la raíz del proyecto.
+JSON_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "firebase-key.json")
 
-# 2. Me creo este "engine" (motor) para que se encargue de hablar con mi archivo .db
-# Le pongo check_same_thread en False porque si no SQLite se queja al usar hilos.
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+# 2. Inicializo el SDK de Firebase.
+# Solo lo hago si no se ha inicializado ya (para evitar errores al hacer hot-reload).
+try:
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(JSON_PATH)
+        firebase_admin.initialize_app(cred)
+except Exception as e:
+    print(f"ERROR CRÍTICO AL INICIAR FIREBASE: {e}")
+    print("Asegúrate de que 'firebase-key.json' esté en la carpeta raíz.")
 
-# 3. La 'SessionLocal' es mi fábrica de sesiones. 
-# Cada vez que quiera leer o guardar algo, le pediré una sesión a esta fábrica.
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# 3. Me preparo mi cliente de Firestore.
+db_firestore = firestore.client()
 
-# 4. Mi 'Base' es de donde van a colgar todas mis tablas.
-# Es mi molde maestro para que SQLAlchemy sepa qué tablas tiene que crear.
-Base = declarative_base()
-
-# Esta función me la he hecho para abrir y cerrar la conexión sola cada vez que la necesite.
+# Esta función la mantengo para que el resto del código siga funcionando casi igual.
+# Ahora en lugar de una sesión de SQL, inyectará el cliente de Firestore.
 def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    """
+    Proporciona el cliente de Firestore para las peticiones.
+    """
+    yield db_firestore

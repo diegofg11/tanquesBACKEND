@@ -10,13 +10,10 @@ class UserCreate(BaseModel):
     password: str
 
 # Aquí decido qué datos voy a ENVIAR de vuelta cuando alguien me pregunte por un usuario.
-# Lógicamente, NO devuelvo la contraseña por seguridad.
 class UserOut(BaseModel):
-    id: int
     username: str
     is_active: bool
     score: int
 
-    # Esto lo pongo para que Pydantic sepa leer mis modelos de SQLAlchemy directamente.
     class Config:
         from_attributes = True

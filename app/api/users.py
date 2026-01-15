@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from google.cloud import firestore
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserOut
@@ -12,52 +12,59 @@ router = APIRouter(
 )
 
 @router.post("/register", response_model=UserOut)
-def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
+def register_user(user_data: UserCreate, db: firestore.Client = Depends(get_db)):
     """
     Ruta que me he hecho para registrar a nuevos jugadores.
-    - Miro si el nombre ya está pillado.
-    - Encripto la contraseña (¡nunca en plano!).
-    - Lo guardo en mi base de datos SQL.
+    - Miro si el nombre ya está pillado en Firestore.
+    - Encripto la contraseña.
+    - Lo guardo como un documento en la colección "users".
     """
-    # 1. Primero miro si ya tengo a alguien con ese mismo nombre.
-    db_user = db.query(User).filter(User.username == user_data.username).first()
-    if db_user:
+    # 1. Busco si ya existe un documento con ese username
+    users_ref = db.collection("users")
+    query = users_ref.where("username", "==", user_data.username).limit(1).get()
+    
+    if len(query) > 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Este nombre de usuario ya lo tengo registrado"
+            detail="Este nombre de usuario ya lo tengo registrado en la nube"
         )
     
-    # 2. Paso la contraseña por mi función de hash para que sea segura.
+    # 2. Encripto la contraseña
     hashed_pwd = get_password_hash(user_data.password)
     
-    # 3. Monto mi objeto de usuario nuevo.
+    # 3. Monto el objeto y lo convierto a diccionario
     new_user = User(
         username=user_data.username,
         hashed_password=hashed_pwd
     )
     
-    # 4. Lo mando a la base de datos y hago el commit para confirmar.
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user) # Le pido a la DB que me devuelva el ID que le ha puesto
+    # 4. Lo guardo en Firestore. 
+    # Uso el username como ID del documento para que sea único por naturaleza.
+    users_ref.document(user_data.username).set(new_user.to_dict())
     
     return new_user
 
 @router.post("/login")
-def login(user_data: UserCreate, db: Session = Depends(get_db)):
+def login(user_data: UserCreate, db: firestore.Client = Depends(get_db)):
     """
-    Aquí es donde compruebo si alguien puede entrar.
-    - Busco al usuario.
-    - Verifico que la contraseña me cuadre.
+    Aquí es donde compruebo si alguien puede entrar desde Firebase.
     """
-    # 1. Lo busco en mi base de datos por su nombre.
-    user = db.query(User).filter(User.username == user_data.username).first()
+    # 1. Intento traer el documento que tiene ese username como ID
+    user_doc = db.collection("users").document(user_data.username).get()
     
-    # 2. Si no lo encuentro o la contraseña no es la suya...
-    if not user or not verify_password(user_data.password, user.hashed_password):
-        raise HTTPException(
+    # 2. Si no existe o la contraseña no cuadra...
+    if not user_doc.exists:
+         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Me has dado un usuario o contraseña incorrectos"
+            detail="No encuentro a ese usuario en mi base de datos de Firebase"
         )
     
-    return {"mensaje": "¡He recordado al usuario! Entrando...", "user_id": user.id}
+    user_data_db = user_doc.to_dict()
+    
+    if not verify_password(user_data.password, user_data_db["hashed_password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="La contraseña no coincide"
+        )
+    
+    return {"mensaje": "¡Usuario verificado en Firebase!", "username": user_data.username}

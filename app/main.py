@@ -1,31 +1,37 @@
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, Depends
-from fastapi.middleware.cors import CORSMiddleware # Mi llave para dejar entrar peticiones web
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
-# ... resto de imports ...
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+from google.cloud import firestore
+
+# Mis archivos locales
+from app.api import users
+from app.api.game import manager
+from app.database import get_db
+from app.models.user import User
+from app.schemas.game import TankState
 
 # --- MI INSTANCIA PRINCIPAL ---
 app = FastAPI(
     title="Tanques API",
-    description="Backend para mi juego de tanques",
-    version="0.1.0"
+    description="Backend para mi juego de tanques con Firebase Firestore",
+    version="0.2.0"
 )
 
 # ME DOY PERMISOS DE CORS:
-# Esto es vital para que mi simulador HTML pueda registrar usuarios mediante peticiones HTTP.
-# Si no lo pongo, el navegador bloqueará mis intentos de registro por seguridad.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Por ahora dejo entrar a cualquiera, luego lo cerraré.
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Aquí conecto mis rutas de usuarios (registro y login) al servidor principal
+# Aquí conecto mis rutas de usuarios
 app.include_router(users.router)
 
 # --- MIS MANEJADORES DE ERRORES ---
-# Esto lo pongo para que si falla una validación, el servidor me responda algo que yo entienda.
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
@@ -33,7 +39,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"message": "He detectado un error de validación", "detalle": exc.errors()},
     )
 
-# Este es mi "salvavidas" para capturar cualquier otro error que se me haya escapado.
 @app.exception_handler(Exception)
 async def debug_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -41,69 +46,58 @@ async def debug_exception_handler(request: Request, exc: Exception):
         content={"message": "Ha petado algo interno", "detalle": str(exc)},
     )
 
-# --- MI RUTA DE BIENVENIDA ---
 @app.get("/")
 async def root():
     return {
-        "mensaje": "¡Mi API de Tanques está en marcha!",
-        "doc_url": "/docs" # Mi chuleta de documentación automática
+        "mensaje": "¡Mi API de Tanques con Firebase está en marcha!",
+        "doc_url": "/docs"
     }
 
-# --- MI LÓGICA DE WEBSOCKETS (CON VERIFICACIÓN DE USUARIO) ---
+# --- MI LÓGICA DE WEBSOCKETS (CON VERIFICACIÓN DE FIREBASE) ---
 
 @app.websocket("/ws/game/{room_id}/{username}")
-async def game_websocket(websocket: WebSocket, room_id: str, username: str, db: Session = Depends(get_db)):
+async def game_websocket(websocket: WebSocket, room_id: str, username: str, db: firestore.Client = Depends(get_db)):
     """
-    Aquí es donde gestiono la conexión de los tanques.
-    Ahora solo dejo pasar a los que estén registrados en mi base de datos.
+    Gestión de conexión de tanques con verificación en Firestore.
     """
-    # 1. Antes de nada, acepto la conexión técnica para poder hablar.
     await websocket.accept()
 
-    # 2. MI CONTROL DE SEGURIDAD: Busco al usuario en mi base de datos SQL.
-    user_db = db.query(User).filter(User.username == username).first()
+    # 1. MI CONTROL DE SEGURIDAD: Busco al usuario en Firestore (usando username como ID)
+    user_doc = db.collection("users").document(username).get()
     
-    if not user_db:
-        # Si no lo encuentro, le mando un mensaje y chapo la conexión.
-        # Uso el código 4003 que significa "Violación de política".
-        print(f"DEBUG MÍO: Intento de entrada ilegal de '{username}'.")
+    if not user_doc.exists:
+        print(f"DEBUG MÍO: Intento de entrada ilegal de '{username}'. No existe en Firebase.")
         await websocket.close(code=4003)
         return
 
-    # 3. Si ha pasado el control, lo meto en la sala.
-    # El conserje ahora también le mandará lo que hay en memoria nada más conectar.
+    # 2. Si ha pasado el control, lo meto en la sala.
     await manager.connect_already_accepted(websocket, room_id)
     
-    # 4. Lanzo un mensaje de sistema para avisar a los demás.
     await manager.broadcast_to_room({
         "tipo": "sistema",
-        "contenido": f"{username} se ha unido a mi partida en {room_id}"
+        "contenido": f"{username} se ha unido a la partida en {room_id} (Verificado en Firebase)"
     }, room_id)
     
     try:
         while True:
-            # 5. Me quedo esperando a que el cliente me mande un JSON.
             data = await websocket.receive_json()
             
             try:
-                # 6. PASO MI FILTRO:
                 estado_validado = TankState(**data)
                 
-                # 7. ¡AQUÍ GUARDO EN MI MEMORIA!
+                # ¡AQUÍ GUARDO EN MI MEMORIA!
                 manager.update_state(room_id, username, estado_validado.dict())
                 
-                # 8. Si los datos están bien, monto mi paquete para repartirlo.
                 paquete = {
                     "jugador": username,
                     "datos": estado_validado.dict(),
                     "tipo": "movimiento"
                 }
                 
-                # 9. Lo reenvío a toda la sala con total tranquilidad.
                 await manager.broadcast_to_room(paquete, room_id, exclude_self=websocket)
 
             except ValidationError as e:
-                print(f"Ojo: {username} me ha mandado datos que no me valen: {e.json()}")
+                print(f"Ojo: {username} ha mandado datos inválidos: {e}")
                 continue 
             
     except WebSocketDisconnect:

@@ -5,17 +5,14 @@ websockets
 # Uvicorn: Servidor para correr la API
 uvicorn
 
-# SQLAlchemy: Para la base de datos
-sqlalchemy
+# Firebase: Para la base de datos en la nube
+firebase-admin
 
 # Pydantic: Para validación de datos
 pydantic
 
 # Python-multipart: Para leer datos de formularios
 python-multipart
-
-# Aiosqlite: Conector asíncrono para SQLite
-aiosqlite
 
 # Passlib: Para seguridad de contraseñas
 passlib[bcrypt]

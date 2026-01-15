@@ -1,22 +1,36 @@
-from sqlalchemy import Column, Integer, String, Boolean
-from app.database import Base
+# He quitado SQLAlchemy porque ahora usamos Firestore (NoSQL).
+# En Firestore, los datos se guardan como documentos (como JSON/Diccionarios).
 
-# Aquí me monto mi tabla de usuarios tal cual quiero que sea en mi base de datos SQL.
-# Cada cosa que ponga aquí será una columna en mi tabla de verdad.
-class User(Base):
-    __tablename__ = "users" # Así voy a llamar a mi tabla en el archivo .db
+class User:
+    """
+    Esta clase representa a un usuario en mi juego.
+    Ya no es una tabla rígida de SQL, es mi guía para saber qué tiene cada usuario.
+    """
+    def __init__(self, username: str, hashed_password: str, is_active: bool = True, score: int = 0):
+        self.username = username
+        self.hashed_password = hashed_password
+        self.is_active = is_active
+        self.score = score
 
-    # Pongo el ID como clave primaria e índice para que sea rapidísimo encontrarlos.
-    id = Column(Integer, primary_key=True, index=True)
-    
-    # El nombre de usuario tiene que ser único; no quiero dos personas llamándose igual.
-    username = Column(String, unique=True, index=True)
-    
-    # IMPORTANTE: Aquí guardo el hash de la contraseña, que no quiero líos si me roban la DB.
-    hashed_password = Column(String)
-    
-    # Con esto controlo si el usuario todavía puede entrar o si le he baneado.
-    is_active = Column(Boolean, default=True)
+    def to_dict(self):
+        """
+        Convierto el objeto a un diccionario para guardarlo fácil en Firestore.
+        """
+        return {
+            "username": self.username,
+            "hashed_password": self.hashed_password,
+            "is_active": self.is_active,
+            "score": self.score
+        }
 
-    # Aquí guardo los puntos de cada uno para mi futuro sistema de ránking.
-    score = Column(Integer, default=0)
+    @staticmethod
+    def from_dict(data: dict):
+        """
+        Creo un objeto User a partir de lo que me devuelva Firebase.
+        """
+        return User(
+            username=data.get("username"),
+            hashed_password=data.get("hashed_password"),
+            is_active=data.get("is_active", True),
+            score=data.get("score", 0)
+        )
