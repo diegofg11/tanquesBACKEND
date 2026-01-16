@@ -28,3 +28,4 @@ class ScoreSubmission(BaseModel):
     tiempo_segundos: int
     daño_recibido: int
     nivel_alcanzado: int # 1, 2 o 3 (3 es victoria)
+    game_token: str | None = None # Token de seguridad (JWT)

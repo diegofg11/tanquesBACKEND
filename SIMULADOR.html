@@ -260,6 +260,11 @@
                     <small>Jugando como:</small> <strong id="sim_username" style="color:white;">---</strong>
                 </div>
 
+                <!-- Botón Start Game -->
+                <button onclick="doStartGame()" class="secondary-btn"
+                    style="margin-bottom:15px; background:#e0a800; color:black;">🏁 1. Iniciar Partida (Pedir
+                    Token)</button>
+
                 <label>Tiempo (segundos)</label>
                 <input type="number" id="sim_time" value="120">
 
@@ -273,7 +278,8 @@
                     <option value="3" selected>Victoria (Nivel 3)</option>
                 </select>
 
-                <button onclick="submitScore()">🚀 Enviar Resultado</button>
+                <button id="sim_btn_submit" onclick="submitScore()" disabled style="opacity:0.5;">🚀 2. Enviar
+                    Resultado</button>
             </div>
         </div>
 
@@ -442,14 +448,45 @@
 
         // --- SIMULATOR ---
 
+        let currentGameToken = null;
+
+        async function doStartGame() {
+            if (!currentUser) return log("Debes iniciar sesión", "error");
+
+            log("Iniciando partida (pidiendo token)...");
+            try {
+                const res = await fetch(`${API_URL}/users/${currentUser}/start-game`, {
+                    method: 'POST'
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    currentGameToken = data.game_token;
+                    log("✅ Partida iniciada. Token recibido. Ahora puedes simular el final.", "success");
+
+                    // Unlock submit button
+                    const btn = document.getElementById('sim_btn_submit');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.style.opacity = "1";
+                    }
+                } else {
+                    log("Error al iniciar: " + res.statusText, "error");
+                }
+            } catch (e) {
+                log("Error Start Game: " + e.message, "error");
+            }
+        }
+
         async function submitScore() {
             if (!currentUser) return log("Debes iniciar sesión", "error");
+            if (!currentGameToken) return log("🚫 Tienes que INICIAR PARTIDA primero (Anti-Trampas)", "error");
 
             const time = parseInt(document.getElementById('sim_time').value);
             const dmg = parseInt(document.getElementById('sim_dmg').value);
             const lvl = parseInt(document.getElementById('sim_level').value);
 
-            log(`Enviando puntuación de ${currentUser}: T=${time}s, Daño=${dmg}, Nivel=${lvl}...`);
+            log(`Enviando puntuación de ${currentUser} con TOKEN...`);
 
             try {
                 const res = await fetch(`${API_URL}/users/${currentUser}/submit-score`, {
@@ -458,7 +495,8 @@
                     body: JSON.stringify({
                         tiempo_segundos: time,
                         daño_recibido: dmg,
-                        nivel_alcanzado: lvl
+                        nivel_alcanzado: lvl,
+                        game_token: currentGameToken
                     })
                 });
 
@@ -468,12 +506,21 @@
                     let msg = `Puntos calculados: ${data.score_partida}. `;
                     if (data.nuevo_record) {
                         msg += " 🔥 ¡NUEVO RÉCORD!";
-                        // Trigger confetti logic broadly if I had it, lol
                     } else {
                         msg += ` (Tu mejor sigue siendo: ${data.high_score_actual})`;
                     }
                     log(msg, "success");
                     loadRanking(); // Auto refresh ranking
+
+                    // Reset token
+                    currentGameToken = null;
+                    const btn = document.getElementById('sim_btn_submit');
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.style.opacity = "0.5";
+                    }
+                    log("Token consumido. Inicia nueva partida.", "info");
+
                 } else {
                     log("Error servidor: " + (data.detail || JSON.stringify(data)), "error");
                 }

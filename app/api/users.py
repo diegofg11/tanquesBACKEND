@@ -68,12 +68,56 @@ def login(user_data: UserCreate, db: firestore.Client = Depends(get_db)):
     
     return {"mensaje": "Autenticación exitosa", "username": user_data.username}
 
+# --- SEGURIDAD: CONFIGURACIÓN JWT SIMPLIFICADA ---
+SECRET_KEY = "CLAVE_SUPER_SECRETA_TANQUES_BACKEND" # En prod, usar env vars!
+ALGORITHM = "HS256"
+import jwt
+import datetime
+
+@router.post("/{username}/start-game")
+def start_game(username: str, db: firestore.Client = Depends(get_db)):
+    """
+    Genera un TOKEN DE PARTIDA válido por 10 minutos.
+    Unity debe llamar a esto al empezar la partida y guardar el token.
+    """
+    # Verificar usuario
+    user_doc = db.collection("users").document(username).get()
+    if not user_doc.exists:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Crear Token
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    payload = {
+        "sub": username,
+        "type": "game_session",
+        "exp": expiration
+    }
+    
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {"game_token": token}
+
 @router.post("/{username}/submit-score")
 def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = Depends(get_db)):
     """
-    Calcula y guarda la puntuación de la partida en la colección 'scores'.
-    Ahora permitimos múltiples puntuaciones por usuario en el ranking global.
+    Calcula y guarda la puntuación. REQUIERE game_token válido.
     """
+    # 0. VERIFICACIÓN DE SEGURIDAD (ANTI-TRAMPAS)
+    if not stats.game_token:
+         raise HTTPException(status_code=403, detail="Falta el token de partida. ¿Hiciste Start Game?")
+    
+    try:
+        payload = jwt.decode(stats.game_token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("sub") != username:
+            raise HTTPException(status_code=403, detail="El token no pertenece a este usuario")
+        if payload.get("type") != "game_session":
+            raise HTTPException(status_code=403, detail="Token inválido para enviar scores")
+            
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=403, detail="La partida ha caducado (Token expirado)")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=403, detail="Token inválido o manipulado")
+
     # 1. Definir puntos base según nivel
     puntos_base = 0
     if stats.nivel_alcanzado == 1:
@@ -92,10 +136,9 @@ def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = D
     if score_final < 0:
         score_final = 0
 
-    # 3. Guardar en la colección 'scores' (Registro Histórico)
-    import datetime
+    # 3. Guardar en la colección 'scores'
     scores_ref = db.collection("scores")
-    new_score_doc = scores_ref.document() # ID automático
+    new_score_doc = scores_ref.document()
     
     score_data = {
         "username": username,
@@ -106,7 +149,7 @@ def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = D
     
     new_score_doc.set(score_data)
 
-    # 4. (Opcional) Actualizar 'score' en 'users' SOLO si es su mejor personal (para perfil)
+    # 4. Actualizar usuario (Mejor Puntuación)
     user_ref = db.collection("users").document(username)
     user_doc = user_ref.get()
     
@@ -117,15 +160,14 @@ def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = D
         if score_final > current_best:
             user_ref.update({"score": score_final})
             titulo_record = True
-            current_best = score_final # Actualizamos variable para response
+            current_best = score_final
     else:
-        # Si el usuario no existe por alguna razón extraña (borrado manual?), no fallamos
         pass
         
     return {
         "score_partida": score_final,
-        "nuevo_record": titulo_record, # Indica si superó SU mejor marca personal
-        "high_score_actual": score_final # Devolvemos la de esta partida
+        "nuevo_record": titulo_record,
+        "high_score_actual": score_final
     }
 
 @router.get("/ranking/top")
