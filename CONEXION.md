@@ -45,6 +45,7 @@ public class ScoreSubmission
     public int tiempo_segundos;
     public int daño_recibido;
     public int nivel_alcanzado; // 1, 2, o 3
+    public string game_token;   // NUEVO: Token de seguridad
 }
 
 [Serializable]
@@ -52,6 +53,12 @@ public class RankingItem
 {
     public string username;
     public int score;
+}
+
+[Serializable]
+public class GameTokenResponse
+{
+    public string game_token;
 }
 ```
 
@@ -61,55 +68,54 @@ public class RankingItem
 
 ### A. Login y Registro
 
+*(Igual que antes...)*
+
+### B. Flujo de Juego Seguro (Anti-Trampas)
+
+**IMPORTANTE:** Ahora debes pedir un token al empezar la partida y enviarlo al final.
+
 ```csharp
-using UnityEngine;
-using UnityEngine.Networking;
-using System.Collections;
-using System.Text;
+private string currentGameToken; // Guardar aquí el token
 
-public class BackendConnector : MonoBehaviour
+// 1. Llamar al EMPEZAR la partida
+public void EmpezarPartida(string username)
 {
-    private string baseUrl = "http://127.0.0.1:8000";
+    StartCoroutine(GetGameToken(username));
+}
 
-    public void IntentarLogin(string user, string pass)
+IEnumerator GetGameToken(string username)
+{
+    string url = baseUrl + "/users/" + username + "/start-game";
+    
+    var request = new UnityWebRequest(url, "POST");
+    request.downloadHandler = new DownloadHandlerBuffer();
+    
+    yield return request.SendWebRequest();
+
+    if (request.result == UnityWebRequest.Result.Success)
     {
-        StartCoroutine(SendLoginRequest(user, pass));
+        // Parsear respuesta
+        GameTokenResponse res = JsonUtility.FromJson<GameTokenResponse>(request.downloadHandler.text);
+        currentGameToken = res.game_token;
+        Debug.Log("Token recibido: " + currentGameToken);
     }
-
-    IEnumerator SendLoginRequest(string username, string password)
+    else
     {
-        string url = baseUrl + "/users/login";
-        
-        // 1. Crear el JSON
-        UserLoginData data = new UserLoginData { username = username, password = password };
-        string jsonData = JsonUtility.ToJson(data);
-
-        // 2. Configurar la petición
-        var request = new UnityWebRequest(url, "POST");
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
-        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-        request.downloadHandler = new DownloadHandlerBuffer();
-        request.SetRequestHeader("Content-Type", "application/json");
-
-        // 3. Enviar y Esperar
-        yield return request.SendWebRequest();
-
-        if (request.result == UnityWebRequest.Result.Success)
-        {
-            Debug.Log("Login OK: " + request.downloadHandler.text);
-            // AQUÍ: Guardar el username y cambiar a la escena de juego
-        }
-        else
-        {
-            Debug.LogError("Error Login: " + request.error + " | " + request.downloadHandler.text);
-        }
+        Debug.LogError("Error consiguiendo token: " + request.error);
     }
 }
-```
 
-### B. Enviar Puntuación (Al terminar)
+// 2. Llamar al TERMINAR la partida
+public void TerminarPartida(string username, int tiempo, int daño, int nivel) 
+{
+    if(string.IsNullOrEmpty(currentGameToken)) 
+    {
+        Debug.LogError("No tienes token! ¿Llamaste a EmpezarPartida?");
+        return;
+    }
+    StartCoroutine(SubmitScore(username, tiempo, daño, nivel));
+}
 
-```csharp
 IEnumerator SubmitScore(string username, int tiempo, int daño, int nivel)
 {
     string url = baseUrl + "/users/" + username + "/submit-score";
@@ -118,7 +124,8 @@ IEnumerator SubmitScore(string username, int tiempo, int daño, int nivel)
     { 
         tiempo_segundos = tiempo, 
         daño_recibido = daño, 
-        nivel_alcanzado = nivel 
+        nivel_alcanzado = nivel,
+        game_token = currentGameToken // ENVIAMOS EL TOKEN
     };
     
     string jsonData = JsonUtility.ToJson(data);
@@ -133,50 +140,32 @@ IEnumerator SubmitScore(string username, int tiempo, int daño, int nivel)
     if (request.result == UnityWebRequest.Result.Success)
     {
        Debug.Log("Puntos enviados: " + request.downloadHandler.text);
+       currentGameToken = null; // Resetear token usado
+    }
+    else
+    {
+       Debug.LogError("Error enviando puntos: " + request.downloadHandler.text);
     }
 }
 ```
 
----
+### C. Obtener Mi Perfil (Récord)
 
-## 4. Sistema de Ranking
-
-### A. Estructuras de Datos (Ranking)
+Útil para el Menú Principal.
 
 ```csharp
-[Serializable]
-public class ScoreSubmission
+IEnumerator GetUserProfile(string username)
 {
-    public int tiempo_segundos;
-    public int daño_recibido;
-    public int nivel_alcanzado; // 1, 2, o 3
-}
-
-[Serializable]
-public class RankingItem
-{
-    public string username;
-    public int score;
-}
-```
-
-### B. Ejemplo: Enviar Puntuación (Al terminar partida)
-
-```csharp
-// Método dentro de tu BackendConnector.cs o GameManager.cs
-IEnumerator SubmitScore(string username, int tiempo, int daño, int nivel)
-{
-    string url = baseUrl + "/users/" + username + "/submit-score";
+    string url = baseUrl + "/users/" + username;
+    var request = UnityWebRequest.Get(url);
     
-    ScoreSubmission data = new ScoreSubmission 
-    { 
-        tiempo_segundos = tiempo, 
-        daño_recibido = daño, 
-        nivel_alcanzado = nivel 
-    };
-    
-    // ... Creación de UnityWebRequest igual que el Login ...
-    // ... SendWebRequest() ...
+    yield return request.SendWebRequest();
+
+    if (request.result == UnityWebRequest.Result.Success)
+    {
+        UserResponse user = JsonUtility.FromJson<UserResponse>(request.downloadHandler.text);
+        Debug.Log("Tu récord actual es: " + user.score);
+        // Actualizar UI...
+    }
 }
-```
 ```

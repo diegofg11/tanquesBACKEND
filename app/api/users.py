@@ -149,25 +149,38 @@ def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = D
     
     new_score_doc.set(score_data)
 
-    # 4. Actualizar usuario (Mejor Puntuación)
+    # 4. Actualizar usuario (Mejor Puntuación - LOGICA AUTO-REPARADORA)
     user_ref = db.collection("users").document(username)
     user_doc = user_ref.get()
     
     titulo_record = False
     
-    if user_doc.exists:
-        current_best = user_doc.to_dict().get("score", 0)
-        if score_final > current_best:
-            user_ref.update({"score": score_final})
-            titulo_record = True
-            current_best = score_final
-    else:
-        pass
+    # Buscamos el verdadero MAX histórico de este usuario en 'scores'
+    # Ordenamos descendente y cogemos el primero
+    best_score_query = scores_ref.where("username", "==", username)\
+        .order_by("score", direction=firestore.Query.DESCENDING)\
+        .limit(1).get()
         
+    true_max_score = 0
+    if len(best_score_query) > 0:
+        true_max_score = best_score_query[0].to_dict().get("score", 0)
+
+    # Actualizamos el perfil si es necesario
+    if user_doc.exists:
+        stored_score = user_doc.to_dict().get("score", 0)
+        
+        # Si el score actual supera al histórico (caso normal de récord)
+        if score_final > stored_score:
+            titulo_record = True
+        
+        # Sincronización: Si el verdadero max es mayor que lo guardado, actualizamos
+        if true_max_score > stored_score:
+            user_ref.update({"score": true_max_score})
+            
     return {
         "score_partida": score_final,
         "nuevo_record": titulo_record,
-        "high_score_actual": score_final
+        "high_score_actual": true_max_score # Devolvemos siempre la verdad
     }
 
 @router.get("/ranking/top")
