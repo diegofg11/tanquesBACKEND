@@ -1,43 +1,119 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 
 <head>
-    <title>Tanques v2 - Simulador y Registro</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tanques Simulator v3.0</title>
     <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent-color: #4caf50;
+            /* Green Tank */
+            --accent-hover: #45a049;
+            --text-color: #e0e0e0;
+            --muted-text: #a0a0a0;
+            --error-color: #ef5350;
+            --console-bg: #000;
+            --console-text: #0f0;
+        }
+
         body {
-            font-family: sans-serif;
-            background: #222;
-            color: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
         }
 
-        #messages {
-            border: 1px solid #444;
-            height: 300px;
-            overflow-y: scroll;
+        h1,
+        h2,
+        h3 {
+            margin: 0 0 10px 0;
+        }
+
+        /* HEADER */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 20px;
+        }
+
+        .user-status {
+            font-size: 0.9em;
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        button.logout-btn {
+            background: #d32f2f;
+            font-size: 0.8em;
+            padding: 5px 10px;
+            margin-left: 10px;
+            display: none;
+            /* Hidden by default */
+        }
+
+        /* MAIN LAYOUT */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+            /* For scrolling */
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* FORM ELEMENTS */
+        input,
+        select {
+            width: 100%;
             padding: 10px;
-            background: #000;
-            margin-top: 10px;
+            margin-bottom: 10px;
+            background: #2c2c2c;
+            border: 1px solid #444;
+            color: white;
             border-radius: 4px;
+            box-sizing: border-box;
         }
 
-        input {
-            padding: 8px;
-            margin: 5px;
-            border-radius: 4px;
-            border: 1px solid #555;
-            background: #444;
-            color: white;
+        input:focus {
+            outline: none;
+            border-color: var(--accent-color);
         }
 
         button {
-            padding: 10px 15px;
-            background: #28a745;
+            width: 100%;
+            padding: 10px;
+            background: var(--accent-color);
             color: white;
             border: none;
-            cursor: pointer;
             border-radius: 4px;
+            cursor: pointer;
             font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
         }
 
         button:disabled {
@@ -45,147 +121,414 @@
             cursor: not-allowed;
         }
 
-        .section {
-            background: #333;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border: 1px solid #555;
+        .secondary-btn {
+            background: #444;
+            margin-top: 5px;
+        }
+
+        .secondary-btn:hover {
+            background: #555;
+        }
+
+        /* AUTH FORMS */
+        .auth-toggle {
+            text-align: center;
+            font-size: 0.8em;
+            margin-top: 10px;
+            color: var(--muted-text);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        /* CONSOLE */
+        .console-container {
+            grid-column: 1 / -1;
+            background: var(--console-bg);
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: var(--console-text);
+            height: 150px;
+            overflow-y: scroll;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 2px;
+        }
+
+        .log-time {
+            color: #555;
+            margin-right: 5px;
+        }
+
+        .log-error {
+            color: var(--error-color);
+        }
+
+        .log-success {
+            color: var(--accent-color);
+        }
+
+        /* LEADERBOARD */
+        ul.leaderboard {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li.rank-item {
+            padding: 8px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        li.rank-item:first-child {
+            color: gold;
+            font-weight: bold;
+        }
+
+        li.rank-item:nth-child(2) {
+            color: silver;
+        }
+
+        li.rank-item:nth-child(3) {
+            color: #cd7f32;
+        }
+
+        /* UTILS */
+        .hidden {
+            display: none !important;
         }
 
         label {
-            display: inline-block;
-            width: 80px;
+            font-size: 0.8em;
+            color: var(--muted-text);
+            margin-bottom: 4px;
+            display: block;
         }
     </style>
 </head>
 
 <body>
-    <h1>🎮 Mi Simulador de Tanques v2</h1>
 
-    <!-- I. MI ZONA DE REGISTRO (Nueva) -->
-    <div class="section">
-        <h3>🔑 1. Registro de mi Jugador</h3>
-        <p style="font-size: 0.9em; color: #aaa;">Primero tengo que crearme una cuenta si no la tengo.</p>
-        <input type="text" id="reg_username" placeholder="Nombre usuario">
-        <input type="password" id="reg_password" placeholder="Contraseña">
-        <button onclick="registerUser()" style="background: #007bff;">Crear Cuenta</button>
-        <div id="reg_status" style="margin-top: 10px; font-weight: bold;"></div>
+    <header>
+        <div>
+            <h1>🎮 Tanques Simulator <span style="font-size:0.5em; color:#777;">v3.0</span></h1>
+        </div>
+        <div>
+            <span id="user_display" class="user-status">Visitante</span>
+            <button onclick="logout()" id="btn_logout" class="logout-btn">Salir</button>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- 1. AUTH PANEL -->
+        <div class="card" id="card_auth">
+            <h3 id="auth_title">🔐 Login</h3>
+
+            <!-- LOGIN FORM -->
+            <div id="form_login">
+                <input type="text" id="login_user" placeholder="Usuario">
+                <input type="password" id="login_pass" placeholder="Contraseña">
+                <button onclick="doLogin()">Entrar</button>
+                <div class="auth-toggle" onclick="toggleAuth('register')">¿No tienes cuenta? Regístrate</div>
+            </div>
+
+            <!-- REGISTER FORM -->
+            <div id="form_register" class="hidden">
+                <input type="text" id="reg_user" placeholder="Nuevo Usuario">
+                <input type="password" id="reg_pass" placeholder="Contraseña">
+                <button onclick="doRegister()" style="background: #007bff;">Crear Cuenta</button>
+                <div class="auth-toggle" onclick="toggleAuth('login')">¿Ya tienes cuenta? Inicia sesión</div>
+            </div>
+        </div>
+
+        <!-- 2. SIMULATOR PANEL (LOCKED) -->
+        <div class="card" id="card_sim">
+            <h3>⚔️ Simulador de Partida</h3>
+            <div id="sim_overlay" style="text-align:center; padding: 20px; color:#777;">
+                <p>🔒 Inicia sesión para simular partidas.</p>
+            </div>
+
+            <div id="sim_controls" class="hidden">
+                <div style="margin-bottom: 15px; border-left: 2px solid var(--accent-color); padding-left: 10px;">
+                    <small>Jugando como:</small> <strong id="sim_username" style="color:white;">---</strong>
+                </div>
+
+                <label>Tiempo (segundos)</label>
+                <input type="number" id="sim_time" value="120">
+
+                <label>Daño Recibido (0-100)</label>
+                <input type="number" id="sim_dmg" value="20">
+
+                <label>Resultado</label>
+                <select id="sim_level">
+                    <option value="1">Derrota / Nivel 1</option>
+                    <option value="2">Nivel 2</option>
+                    <option value="3" selected>Victoria (Nivel 3)</option>
+                </select>
+
+                <button onclick="submitScore()">🚀 Enviar Resultado</button>
+            </div>
+        </div>
+
+        <!-- 3. LEADERBOARD PANEL -->
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3>🏆 Top 10</h3>
+                <button onclick="loadRanking()"
+                    style="width: auto; padding: 5px 10px; font-size: 0.8em; background:#333;">🔄</button>
+            </div>
+            <ul id="leaderboard_list" class="leaderboard">
+                <li style="padding:10px; color:#555;">Cargando...</li>
+            </ul>
+        </div>
+
     </div>
 
-    <!-- II. MI SISTEMA DE PUNTUACIÓN -->
-    <div class="section">
-        <h3>🏆 2. Ranking y Puntuación</h3>
-        <div>
-            <h4>Simular Fin de Partida</h4>
-            <input type="number" id="time_taken" placeholder="Tiempo (seg)" value="120">
-            <input type="number" id="damage_taken" placeholder="Daño Recibido" value="50">
-            <select id="level_reached">
-                <option value="1">Nivel 1</option>
-                <option value="2">Nivel 2</option>
-                <option value="3" selected>Nivel 3 (Victoria)</option>
-            </select>
-            <button onclick="submitScore()">Enviar Puntuación</button>
-            <div id="score_result" style="color: #bbb; margin-top: 5px;"></div>
+    <!-- CONSOLE -->
+    <div class="console-container" id="console_output">
+        <div class="log-entry"><span class="log-time">[System]</span> Simulador listo. Conecta al servidor en port 8000.
         </div>
-        <hr style="border-color: #555;">
-        <div>
-            <h4>Top 10 Jugadores</h4>
-            <button onclick="getLeaderboard()" style="background: #e0a800;">🔄 Actualizar Tabla</button>
-            <ul id="leaderboard_list" style="background: #111; padding: 10px; list-style: none;"></ul>
-        </div>
-    </div>
-
-    <!-- III. CONSOLA -->
-    <div class="section">
-        <h3>📝 Estado</h3>
-        <div id="messages"></div>
     </div>
 
     <script>
-        // --- MI LÓGICA DE REGISTRO (HTTP) ---
-        async function registerUser() {
-            const user = document.getElementById('reg_username').value;
-            const pass = document.getElementById('reg_password').value;
-            const statusDiv = document.getElementById('reg_status');
+        // CONFIG
+        const API_URL = "http://localhost:8000";
+        let currentUser = null;
 
-            statusDiv.innerText = "Mandando registro...";
-            statusDiv.style.color = "#eee";
+        // INIT
+        window.onload = () => {
+            // Check LocalStorage
+            const storedUser = localStorage.getItem("tanques_user");
+            if (storedUser) {
+                currentUser = storedUser;
+                updateUIState(true);
+                log("Sesión restaurada: " + currentUser, "success");
+            }
+            loadRanking();
+        };
+
+        // --- AUTH ---
+
+        function toggleAuth(mode) {
+            if (mode === 'register') {
+                document.getElementById('form_login').classList.add('hidden');
+                document.getElementById('form_register').classList.remove('hidden');
+                document.getElementById('auth_title').innerText = "📝 Registro";
+            } else {
+                document.getElementById('form_login').classList.remove('hidden');
+                document.getElementById('form_register').classList.add('hidden');
+                document.getElementById('auth_title').innerText = "🔐 Login";
+            }
+        }
+
+        async function doLogin() {
+            const u = document.getElementById('login_user').value;
+            const p = document.getElementById('login_pass').value;
+
+            if (!u || !p) return log("Faltan datos", "error");
+
+            log(`Intentando login para: ${u}...`);
 
             try {
-                const response = await fetch('http://localhost:8000/users/register', {
+                const res = await fetch(`${API_URL}/users/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: user, password: pass })
+                    body: JSON.stringify({ username: u, password: p })
                 });
 
-                const data = await response.json();
-
-                if (response.ok) {
-                    statusDiv.innerText = `✅ ¡Hecho! El usuario '${user}' ya puede jugar.`;
-                    statusDiv.style.color = "#28a745";
+                if (res.ok) {
+                    currentUser = u;
+                    localStorage.setItem("tanques_user", u);
+                    updateUIState(true);
+                    log("Login Exitoso!", "success");
+                    // Clear fields
+                    document.getElementById('login_user').value = "";
+                    document.getElementById('login_pass').value = "";
                 } else {
-                    statusDiv.innerText = `❌ Fallo: ${data.detail || "Datos inválidos"}`;
-                    statusDiv.style.color = "#dc3545";
+                    const err = await res.json();
+                    log("Error Login: " + (err.detail || "Desconocido"), "error");
                 }
-            } catch (error) {
-                statusDiv.innerText = "❌ No hay respuesta del servidor. ¿Está encendido?";
-                statusDiv.style.color = "#dc3545";
+            } catch (e) {
+                log("Error de conexión: " + e.message, "error");
             }
         }
 
-        // --- MI LÓGICA DE RANKING ---
-        async function submitScore() {
-            const user = document.getElementById('reg_username').value;
-            if (!user) { alert("Pon un nombre de usuario arriba primero"); return; }
+        async function doRegister() {
+            const u = document.getElementById('reg_user').value;
+            const p = document.getElementById('reg_pass').value;
 
-            const time = parseInt(document.getElementById('time_taken').value);
-            const dmg = parseInt(document.getElementById('damage_taken').value);
-            const level = parseInt(document.getElementById('level_reached').value);
+            if (!u || !p) return log("Faltan datos", "error");
+            log(`Registrando: ${u}...`);
 
             try {
-                const res = await fetch(`http://localhost:8000/users/${user}/submit-score`, {
+                const res = await fetch(`${API_URL}/users/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tiempo_segundos: time, daño_recibido: dmg, nivel_alcanzado: level })
+                    body: JSON.stringify({ username: u, password: p })
                 });
-                const data = await res.json();
 
-                let msg = `Puntos: ${data.score_partida}. `;
-                if (data.nuevo_record) msg += "🎉 NUEVO RÉCORD!";
-                else msg += `(Récord actual: ${data.high_score_actual})`;
-
-                document.getElementById('score_result').innerText = msg;
-                getLeaderboard();
+                if (res.ok) {
+                    log("✅ Registro completado. Ahora inicia sesión.", "success");
+                    toggleAuth('login');
+                    document.getElementById('login_user').value = u;
+                    document.getElementById('login_pass').value = "";
+                } else {
+                    const err = await res.json();
+                    log("Error Registro: " + (err.detail || "Desconocido"), "error");
+                }
             } catch (e) {
-                console.error(e);
-                alert("Error enviando puntuación");
+                log("Error de conexión: " + e.message, "error");
             }
         }
 
-        async function getLeaderboard() {
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem("tanques_user");
+            updateUIState(false);
+            log("Sesión cerrada.");
+        }
+
+        // --- UI MANIPULATION ---
+
+        function updateUIState(isLoggedIn) {
+            const display = document.getElementById('user_display');
+            const logoutBtn = document.getElementById('btn_logout');
+            const simOverlay = document.getElementById('sim_overlay');
+            const simControls = document.getElementById('sim_controls');
+            const simUsername = document.getElementById('sim_username');
+
+            if (isLoggedIn) {
+                display.innerText = "👤 " + currentUser;
+                display.style.color = "#4caf50";
+                logoutBtn.style.display = "inline-block";
+
+                simOverlay.classList.add('hidden');
+                simControls.classList.remove('hidden');
+                simUsername.innerText = currentUser;
+            } else {
+                display.innerText = "Visitante";
+                display.style.color = "#777";
+                logoutBtn.style.display = "none";
+
+                simOverlay.classList.remove('hidden');
+                simControls.classList.add('hidden');
+                simUsername.innerText = "---";
+            }
+        }
+
+        // --- SIMULATOR ---
+
+        async function submitScore() {
+            if (!currentUser) return log("Debes iniciar sesión", "error");
+
+            const time = parseInt(document.getElementById('sim_time').value);
+            const dmg = parseInt(document.getElementById('sim_dmg').value);
+            const lvl = parseInt(document.getElementById('sim_level').value);
+
+            log(`Enviando puntuación de ${currentUser}: T=${time}s, Daño=${dmg}, Nivel=${lvl}...`);
+
             try {
-                const res = await fetch('http://localhost:8000/users/ranking/top');
+                const res = await fetch(`${API_URL}/users/${currentUser}/submit-score`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tiempo_segundos: time,
+                        daño_recibido: dmg,
+                        nivel_alcanzado: lvl
+                    })
+                });
+
                 const data = await res.json();
+
+                if (res.ok) {
+                    let msg = `Puntos calculados: ${data.score_partida}. `;
+                    if (data.nuevo_record) {
+                        msg += " 🔥 ¡NUEVO RÉCORD!";
+                        // Trigger confetti logic broadly if I had it, lol
+                    } else {
+                        msg += ` (Tu mejor sigue siendo: ${data.high_score_actual})`;
+                    }
+                    log(msg, "success");
+                    loadRanking(); // Auto refresh ranking
+                } else {
+                    log("Error servidor: " + (data.detail || JSON.stringify(data)), "error");
+                }
+            } catch (e) {
+                log("Error enviando: " + e.message, "error");
+            }
+        }
+
+        async function loadRanking() {
+            // log("Actualizando ranking..."); (spammy)
+            try {
+                const res = await fetch(`${API_URL}/users/ranking/top`);
+                const data = await res.json();
+
                 const list = document.getElementById('leaderboard_list');
                 list.innerHTML = "";
 
-                data.forEach((player, index) => {
-                    const li = document.createElement('li');
-                    li.style.padding = "5px";
-                    li.style.borderBottom = "1px solid #333";
-                    let prefix = `#${index + 1}`;
-                    if (index === 0) prefix = "🥇";
-                    if (index === 1) prefix = "🥈";
-                    if (index === 2) prefix = "🥉";
+                if (data.length === 0) {
+                    list.innerHTML = "<li style='padding:10px; text-align:center; color:#555;'>Sin datos</li>";
+                    return;
+                }
 
-                    li.innerText = `${prefix} ${player.username}: ${player.score} pts`;
+                data.forEach((p, i) => {
+                    const li = document.createElement('li');
+                    li.className = "rank-item";
+
+                    let icon = `#${i + 1}`;
+                    if (i === 0) icon = "🥇";
+                    if (i === 1) icon = "🥈";
+                    if (i === 2) icon = "🥉";
+
+                    // Formatear fecha si viene
+                    let dateStr = "";
+                    if (p.fecha) {
+                        const d = new Date(p.fecha);
+                        // Mostrar solo hora/minuto si es hoy, o fecha si es antiguo (simplificado: hora siempre)
+                        dateStr = `<span style="font-size:0.7em; color:#777; margin-left:10px;">(${d.toLocaleTimeString()})</span>`;
+                    }
+
+                    li.innerHTML = `
+                        <div style="display:flex; align-items:center;">
+                            <span style="min-width:30px;">${icon}</span>
+                            <span>${p.username}</span>
+                            ${dateStr}
+                        </div>
+                        <span style="font-weight:bold; color:var(--accent-color);">${p.score}</span>
+                    `;
                     list.appendChild(li);
                 });
             } catch (e) {
-                console.error(e);
+                log("Error cargando ranking: " + e.message, "error");
             }
         }
+
+        // --- LOGGING ---
+
+        function log(msg, type = "info") {
+            const consoleDiv = document.getElementById('console_output');
+            const entry = document.createElement('div');
+            entry.className = "log-entry";
+
+            const time = new Date().toLocaleTimeString();
+            let colorClass = "";
+            if (type === "error") colorClass = "log-error";
+            if (type === "success") colorClass = "log-success";
+
+            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="${colorClass}">${msg}</span>`;
+
+            consoleDiv.appendChild(entry);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
     </script>
 </body>
 

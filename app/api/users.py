@@ -71,8 +71,8 @@ def login(user_data: UserCreate, db: firestore.Client = Depends(get_db)):
 @router.post("/{username}/submit-score")
 def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = Depends(get_db)):
     """
-    Calcula y actualiza la puntuación del usuario si supera su récord personal.
-    Fórmula: Puntos_Base - (Tiempo * 2) - (Daño * 5)
+    Calcula y guarda la puntuación de la partida en la colección 'scores'.
+    Ahora permitimos múltiples puntuaciones por usuario en el ranking global.
     """
     # 1. Definir puntos base según nivel
     puntos_base = 0
@@ -91,44 +91,61 @@ def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = D
     
     if score_final < 0:
         score_final = 0
-        
-    # 3. Recuperar usuario
+
+    # 3. Guardar en la colección 'scores' (Registro Histórico)
+    import datetime
+    scores_ref = db.collection("scores")
+    new_score_doc = scores_ref.document() # ID automático
+    
+    score_data = {
+        "username": username,
+        "score": score_final,
+        "nivel": stats.nivel_alcanzado,
+        "timestamp": datetime.datetime.utcnow()
+    }
+    
+    new_score_doc.set(score_data)
+
+    # 4. (Opcional) Actualizar 'score' en 'users' SOLO si es su mejor personal (para perfil)
     user_ref = db.collection("users").document(username)
     user_doc = user_ref.get()
     
-    if not user_doc.exists:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-        
-    user_data = user_doc.to_dict()
-    current_high_score = user_data.get("score", 0)
+    titulo_record = False
     
-    # 4. Actualizar si es nuevo récord
-    nuevo_record = False
-    if score_final > current_high_score:
-        user_ref.update({"score": score_final})
-        nuevo_record = True
+    if user_doc.exists:
+        current_best = user_doc.to_dict().get("score", 0)
+        if score_final > current_best:
+            user_ref.update({"score": score_final})
+            titulo_record = True
+            current_best = score_final # Actualizamos variable para response
+    else:
+        # Si el usuario no existe por alguna razón extraña (borrado manual?), no fallamos
+        pass
         
     return {
         "score_partida": score_final,
-        "nuevo_record": nuevo_record,
-        "high_score_actual": max(score_final, current_high_score)
+        "nuevo_record": titulo_record, # Indica si superó SU mejor marca personal
+        "high_score_actual": score_final # Devolvemos la de esta partida
     }
 
 @router.get("/ranking/top")
 def get_top_scores(db: firestore.Client = Depends(get_db)):
     """
-    Recupera el Top 10 de usuarios ordenados por puntuación descendente.
+    Recupera el Top 10 de PUNTUACIONES (Partidas) globales.
+    Puede haber múltiples entradas del mismo usuario si ha jugado muy bien varias veces.
     """
-    users_ref = db.collection("users")
+    scores_ref = db.collection("scores")
     
-    query = users_ref.order_by("score", direction=firestore.Query.DESCENDING).limit(10).stream()
+    # Ordenamos por score descendente
+    query = scores_ref.order_by("score", direction=firestore.Query.DESCENDING).limit(10).stream()
     
     ranking = []
     for doc in query:
         data = doc.to_dict()
         ranking.append({
             "username": data.get("username"),
-            "score": data.get("score", 0)
+            "score": data.get("score", 0),
+            "fecha": data.get("timestamp") # Opcional: para mostrar cuándo fue
         })
         
     return ranking
