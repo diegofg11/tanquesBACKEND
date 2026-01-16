@@ -29,3 +29,14 @@ class ScoreSubmission(BaseModel):
     daño_recibido: int
     nivel_alcanzado: int # 1, 2 o 3 (3 es victoria)
     game_token: str | None = None # Token de seguridad (JWT)
+
+class ScoreHistoryItem(BaseModel):
+    """Esquema para mostrar una partida en el historial."""
+    score: int
+    nivel: int
+    fecha: str # Timestamp formateado
+    
+class UserProfileOut(UserOut):
+    """Esquema perfil completo con historial."""
+    total_games: int
+    history: list[ScoreHistoryItem] = []

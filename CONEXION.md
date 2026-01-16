@@ -149,9 +149,9 @@ IEnumerator SubmitScore(string username, int tiempo, int daño, int nivel)
 }
 ```
 
-### C. Obtener Mi Perfil (Récord)
+### C. Obtener Mi Perfil COMPLETO (Récord + Historial)
 
-Útil para el Menú Principal.
+Este método recupera toda la info para el menú "Mi Perfil".
 
 ```csharp
 IEnumerator GetUserProfile(string username)
@@ -163,9 +163,17 @@ IEnumerator GetUserProfile(string username)
 
     if (request.result == UnityWebRequest.Result.Success)
     {
-        UserResponse user = JsonUtility.FromJson<UserResponse>(request.downloadHandler.text);
-        Debug.Log("Tu récord actual es: " + user.score);
-        // Actualizar UI...
+        UserProfileResponse profile = JsonUtility.FromJson<UserProfileResponse>(request.downloadHandler.text);
+        
+        Debug.Log("Hola, " + profile.username);
+        Debug.Log("Récord: " + profile.score);
+        Debug.Log("Partidas Jugadas: " + profile.total_games);
+        
+        // Mostrar historial
+        foreach(var item in profile.history) 
+        {
+             Debug.Log("Partida: " + item.score + " pts - Fecha: " + item.fecha);
+        }
     }
 }
 ```

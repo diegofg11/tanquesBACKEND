@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from google.cloud import firestore
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserOut, ScoreSubmission
+from app.schemas.user import UserCreate, UserOut, ScoreSubmission, UserProfileOut
 from app.core.security import get_password_hash, verify_password
 
 router = APIRouter(
@@ -207,15 +207,53 @@ def get_top_scores(db: firestore.Client = Depends(get_db)):
         
     return ranking
 
-@router.get("/{username}", response_model=UserOut)
+@router.get("/{username}", response_model=UserProfileOut)
 def get_user_profile(username: str, db: firestore.Client = Depends(get_db)):
     """
-    Obtiene los datos públicos de un usuario (para el Menú Principal).
+    Obtiene perfil COMPLETO: Datos + Stats + Historial (Últimas 5).
     """
+    # 1. Datos Usuario
     doc_ref = db.collection("users").document(username)
     doc = doc_ref.get()
     
     if not doc.exists:
          raise HTTPException(status_code=404, detail="Usuario no encontrado")
          
-    return doc.to_dict()
+    user_data = doc.to_dict()
+    
+    # 2. Historial de Partidas (Últimas 5)
+    # Optimización: Query simple y ordenar en memoria (por seguridad si no hay índices)
+    scores_ref = db.collection("scores")
+    # Intentamos traer todos los scores del usuario (si no son miles, es rápido)
+    all_scores_stream = scores_ref.where("username", "==", username).stream()
+    
+    all_scores = []
+    for s in all_scores_stream:
+        d = s.to_dict()
+        # Convertir timestamp a string legible
+        ts = d.get("timestamp")
+        fecha_str = ts.strftime("%Y-%m-%d %H:%M") if ts else "N/A"
+        
+        all_scores.append({
+            "score": d.get("score", 0),
+            "nivel": d.get("nivel", 1),
+            "fecha": fecha_str,
+            "_dt": ts # Temporal para ordenar
+        })
+        
+    # Ordenar por fecha descendente
+    all_scores.sort(key=lambda x: x["_dt"], reverse=True)
+    
+    # 3. Datos Finales
+    total_games = len(all_scores)
+    history_5 = all_scores[:5] # Top 5 recientes
+    
+    # Limpiamos el campo temporal _dt
+    for h in history_5:
+        del h["_dt"]
+
+    return {
+        **user_data,
+        "total_games": total_games,
+        "history": history_5
+    }
