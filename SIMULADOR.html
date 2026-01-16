@@ -411,7 +411,10 @@
 
                 simOverlay.classList.add('hidden');
                 simControls.classList.remove('hidden');
-                simUsername.innerText = currentUser;
+                simUsername.innerText = currentUser + " (Cargando datos...)";
+
+                // Fetch latest profile data (High Score)
+                fetchUserProfile(currentUser);
             } else {
                 display.innerText = "Visitante";
                 display.style.color = "#777";
@@ -420,6 +423,20 @@
                 simOverlay.classList.remove('hidden');
                 simControls.classList.add('hidden');
                 simUsername.innerText = "---";
+            }
+        }
+
+        async function fetchUserProfile(username) {
+            try {
+                const res = await fetch(`${API_URL}/users/${username}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    // Update header specific info
+                    document.getElementById('user_display').innerHTML = `👤 ${data.username} <span style="color:#aaa; font-size:0.8em; margin-left:5px;">(Récord: ${data.score})</span>`;
+                    document.getElementById('sim_username').innerText = data.username;
+                }
+            } catch (e) {
+                console.error("Error fetching profile", e);
             }
         }
 

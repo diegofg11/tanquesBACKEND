@@ -149,3 +149,16 @@ def get_top_scores(db: firestore.Client = Depends(get_db)):
         })
         
     return ranking
+
+@router.get("/{username}", response_model=UserOut)
+def get_user_profile(username: str, db: firestore.Client = Depends(get_db)):
+    """
+    Obtiene los datos públicos de un usuario (para el Menú Principal).
+    """
+    doc_ref = db.collection("users").document(username)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+         
+    return doc.to_dict()
