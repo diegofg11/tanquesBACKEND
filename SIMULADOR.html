@@ -121,6 +121,61 @@
             cursor: not-allowed;
         }
 
+        button:disabled:hover {
+            background-color: #555;
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .close-btn {
+            color: #aaa;
+            position: absolute;
+            right: 15px;
+            top: 5px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            color: white;
+        }
+
+        #user_display_name {
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        #user_display_name:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
         .secondary-btn {
             background: #444;
             margin-top: 5px;
@@ -217,11 +272,13 @@
 
     <header>
         <div>
-            <h1>🎮 Tanques Simulator <span style="font-size:0.5em; color:#777;">v3.0</span></h1>
+            <h2>💀 Tanques Simulator</h2>
         </div>
-        <div>
-            <span id="user_display" class="user-status">Visitante</span>
-            <button onclick="logout()" id="btn_logout" class="logout-btn">Salir</button>
+        <div class="user-status" id="header_status">
+            <span>Usuario: </span>
+            <span id="user_display_name" onclick="openProfile()">---</span>
+            <span id="user_high_score" style="margin-left:10px; color:gold;"></span>
+            <button class="logout-btn" id="btn_logout" onclick="logout()">Cerrar Sesión</button>
         </div>
     </header>
 
@@ -300,6 +357,22 @@
     <!-- CONSOLE -->
     <div class="console-container" id="console_output">
         <div class="log-entry"><span class="log-time">[System]</span> Simulador listo. Conecta al servidor en port 8000.
+        </div>
+    </div>
+
+    <!-- PROFILE MODAL -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeProfile()">&times;</span>
+            <h2 style="color:var(--accent-color); margin-top:10px;">Perfil de Jugador</h2>
+            <div id="modal_loading">Cargando datos...</div>
+            <div id="modal_data" style="display:none; text-align: left; margin-top:20px; padding: 0 20px;">
+                <p style="border-bottom:1px solid #444; padding-bottom:10px;"><strong>Usuario:</strong> <span
+                        id="modal_username" style="float:right;">---</span></p>
+                <p style="border-bottom:1px solid #444; padding-bottom:10px;"><strong>Récord Personal:</strong> <span
+                        id="modal_score" style="float:right; color:gold; font-size:1.2em;">---</span></p>
+                <p><strong>Estado:</strong> <span id="modal_status" style="float:right;">---</span></p>
+            </div>
         </div>
     </div>
 
@@ -404,15 +477,16 @@
         // --- UI MANIPULATION ---
 
         function updateUIState(isLoggedIn) {
-            const display = document.getElementById('user_display');
+            const displayName = document.getElementById('user_display_name');
+            const highscoreDisplay = document.getElementById('user_high_score');
             const logoutBtn = document.getElementById('btn_logout');
             const simOverlay = document.getElementById('sim_overlay');
             const simControls = document.getElementById('sim_controls');
             const simUsername = document.getElementById('sim_username');
 
             if (isLoggedIn) {
-                display.innerText = "👤 " + currentUser;
-                display.style.color = "#4caf50";
+                displayName.innerText = currentUser;
+                displayName.style.color = "#4caf50";
                 logoutBtn.style.display = "inline-block";
 
                 simOverlay.classList.add('hidden');
@@ -422,8 +496,9 @@
                 // Fetch latest profile data (High Score)
                 fetchUserProfile(currentUser);
             } else {
-                display.innerText = "Visitante";
-                display.style.color = "#777";
+                displayName.innerText = "---";
+                displayName.style.color = "#777";
+                highscoreDisplay.innerText = "";
                 logoutBtn.style.display = "none";
 
                 simOverlay.classList.remove('hidden');
@@ -438,7 +513,8 @@
                 if (res.ok) {
                     const data = await res.json();
                     // Update header specific info
-                    document.getElementById('user_display').innerHTML = `👤 ${data.username} <span style="color:#aaa; font-size:0.8em; margin-left:5px;">(Récord: ${data.score})</span>`;
+                    document.getElementById('user_display_name').innerText = data.username;
+                    document.getElementById('user_high_score').innerText = `(Récord: ${data.score})`;
                     document.getElementById('sim_username').innerText = data.username;
                 }
             } catch (e) {
@@ -511,6 +587,7 @@
                     }
                     log(msg, "success");
                     loadRanking(); // Auto refresh ranking
+                    fetchUserProfile(currentUser); // Update user's high score in header
 
                     // Reset token
                     currentGameToken = null;
@@ -593,6 +670,47 @@
             consoleDiv.scrollTop = consoleDiv.scrollHeight;
         }
 
+        // --- PROFILE MODAL LOGIC ---
+        async function openProfile() {
+            if (!currentUser) return;
+
+            const modal = document.getElementById('profileModal');
+            const loading = document.getElementById('modal_loading');
+            const dataDiv = document.getElementById('modal_data');
+
+            modal.style.display = "flex";
+            loading.style.display = "block";
+            dataDiv.style.display = "none";
+
+            try {
+                const res = await fetch(`${API_URL}/users/${currentUser}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('modal_username').innerText = data.username;
+                    document.getElementById('modal_score').innerText = data.score;
+                    document.getElementById('modal_status').innerText = data.is_active ? "Activo" : "Inactivo";
+
+                    loading.style.display = "none";
+                    dataDiv.style.display = "block";
+                } else {
+                    loading.innerText = "Error cargando perfil.";
+                }
+            } catch (e) {
+                loading.innerText = "Error de conexión: " + e.message;
+            }
+        }
+
+        function closeProfile() {
+            document.getElementById('profileModal').style.display = "none";
+        }
+
+        // Close if click outside
+        window.onclick = function (event) {
+            const modal = document.getElementById('profileModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
     </script>
 </body>
 
