@@ -156,14 +156,16 @@ def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = D
     titulo_record = False
     
     # Buscamos el verdadero MAX histórico de este usuario en 'scores'
-    # Ordenamos descendente y cogemos el primero
-    best_score_query = scores_ref.where("username", "==", username)\
-        .order_by("score", direction=firestore.Query.DESCENDING)\
-        .limit(1).get()
-        
+    # NOTA: Para evitar errores de índices compuestos en Firestore (FailedPrecondition),
+    # hacemos la query simple por username y calculamos el max en Python.
+    scores_query = scores_ref.where("username", "==", username).stream()
+    
     true_max_score = 0
-    if len(best_score_query) > 0:
-        true_max_score = best_score_query[0].to_dict().get("score", 0)
+    for s_doc in scores_query:
+        s_data = s_doc.to_dict()
+        val = s_data.get("score", 0)
+        if val > true_max_score:
+            true_max_score = val
 
     # Actualizamos el perfil si es necesario
     if user_doc.exists:
