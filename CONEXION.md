@@ -23,6 +23,7 @@ Copia estas clases en tu proyecto de Unity para que coincidan con el Backend.
 
 ```csharp
 using System;
+using System.Collections.Generic;
 
 [Serializable]
 public class UserLoginData
@@ -59,6 +60,24 @@ public class RankingItem
 public class GameTokenResponse
 {
     public string game_token;
+}
+
+[Serializable]
+public class ScoreHistoryItem
+{
+    public int score;
+    public int nivel;
+    public string fecha;
+}
+
+[Serializable]
+public class UserProfileResponse
+{
+    public string username;
+    public bool is_active;
+    public int score;
+    public int total_games;
+    public List<ScoreHistoryItem> history;
 }
 ```
 
