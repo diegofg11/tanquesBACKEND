@@ -196,3 +196,40 @@ IEnumerator GetUserProfile(string username)
     }
 }
 ```
+
+### D. Obtener Ranking (Top 10)
+
+Este script recupera los 10 mejores resultados de todos los jugadores.
+
+```csharp
+IEnumerator GetRanking()
+{
+    string url = baseUrl + "/users/ranking/top";
+    var request = UnityWebRequest.Get(url);
+    
+    yield return request.SendWebRequest();
+
+    if (request.result == UnityWebRequest.Result.Success)
+    {
+        // El JSON es una LISTA, así que necesitamos el wrapper o usar un truco
+        // Ojo: JsonUtility de Unity NO parsea listas de primer nivel directamente.
+        // Opción A: Usar una librería externa (Newtonsoft).
+        // Opción B: Wrapper simple (Recomendado si no quieres instalar nada).
+        
+        string json = "{\"items\":" + request.downloadHandler.text + "}";
+        RankingList res = JsonUtility.FromJson<RankingList>(json);
+        
+        foreach(var item in res.items)
+        {
+            Debug.Log($"Top: {item.username} - Puntos: {item.score}");
+        }
+    }
+}
+
+[Serializable]
+public class RankingList
+{
+    public List<RankingItem> items;
+}
+```
+
