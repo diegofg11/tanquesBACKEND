@@ -9,15 +9,23 @@ router = APIRouter(
 )
 
 @router.get("/stats")
-def get_dashboard_stats(db: firestore.Client = Depends(get_db)):
+def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_db)):
     """
-    Recupera estadísticas agregadas para el Dashboard.
+    Recupera estadísticas agregadas para el Dashboard con filtros de tiempo.
     """
-    # 1. Total Usuarios
+    # 1. Total Usuarios (Siempre global)
     users_ref = db.collection("users")
     total_users = len(list(users_ref.list_documents()))
 
-    # 2. Total Partidas y Distribución por Nivel
+    # 2. Configurar Fechas para Filtros
+    now = datetime.utcnow()
+    limit_date = None
+    if range == "today":
+        limit_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif range == "week":
+        limit_date = now - timedelta(days=7)
+    
+    # 3. Procesar Partidas
     scores_ref = db.collection("scores")
     all_scores = scores_ref.stream()
     
@@ -25,30 +33,43 @@ def get_dashboard_stats(db: firestore.Client = Depends(get_db)):
     level_dist = {1: 0, 2: 0, 3: 0}
     recent_activity = {} # fecha -> cuenta
     record_of_the_day = 0
-    hoy = datetime.utcnow().date()
+    record_in_range = 0
+    hoy_date = now.date()
 
     for doc in all_scores:
         data = doc.to_dict()
-        total_games += 1
-        
-        # Distribución por nivel
-        lvl = data.get("nivel", 1)
-        level_dist[lvl] = level_dist.get(lvl, 0) + 1
-        
-        # Actividad reciente (últimos 7 días) e Histórico del día
         ts = data.get("timestamp")
-        if ts:
-            fecha_dt = ts.date()
-            fecha_str = ts.strftime("%Y-%m-%d")
-            recent_activity[fecha_str] = recent_activity.get(fecha_str, 0) + 1
-            
-            # Récord del día (Punto 2 adelantado un poco en lógica)
-            if fecha_dt == hoy:
-                score = data.get("score", 0)
-                if score > record_of_the_day:
-                    record_of_the_day = score
+        
+        # Filtro de tiempo: Si hay límite y la partida es anterior, la ignoramos para stats rángo
+        is_in_range = True
+        if limit_date and ts and ts < limit_date:
+            is_in_range = False
 
-    # 3. Preparar Ranking Top 10
+        # --- Lógica del Récord de Hoy (Siempre calculada para la tarjeta fija) ---
+        if ts and ts.date() == hoy_date:
+            score = data.get("score", 0)
+            if score > record_of_the_day:
+                record_of_the_day = score
+
+        # --- Stats dependientes del Filtro ---
+        if is_in_range:
+            total_games += 1
+            
+            # Distribución por nivel
+            lvl = data.get("nivel", 1)
+            level_dist[lvl] = level_dist.get(lvl, 0) + 1
+            
+            # Actividad reciente
+            if ts:
+                fecha_str = ts.strftime("%Y-%m-%d")
+                recent_activity[fecha_str] = recent_activity.get(fecha_str, 0) + 1
+                
+                # Récord en el rango seleccionado
+                score = data.get("score", 0)
+                if score > record_in_range:
+                    record_in_range = score
+
+    # 4. Ranking (Top 10 Global - Mantener global para competitividad)
     ranking_data = []
     top_scores = scores_ref.order_by("score", direction=firestore.Query.DESCENDING).limit(10).stream()
     for doc in top_scores:
@@ -58,7 +79,7 @@ def get_dashboard_stats(db: firestore.Client = Depends(get_db)):
             "score": d.get("score")
         })
 
-    # 4. Muro de Actividad (Novedad Punto 1: Últimos 10 juegos)
+    # 5. Muro de Actividad (Últimos 10 juegos - Siempre últimos)
     live_feed = []
     latest_games = scores_ref.order_by("timestamp", direction=firestore.Query.DESCENDING).limit(10).stream()
     for doc in latest_games:
@@ -78,5 +99,7 @@ def get_dashboard_stats(db: firestore.Client = Depends(get_db)):
         "recent_activity": recent_activity,
         "top_ranking": ranking_data,
         "live_feed": live_feed,
-        "record_of_the_day": record_of_the_day
+        "record_of_the_day": record_of_the_day,
+        "record_in_range": record_in_range,
+        "active_range": range
     }

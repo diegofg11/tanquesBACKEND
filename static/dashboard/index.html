@@ -142,6 +142,40 @@
             color: #c084fc;
         }
 
+        /* Filtros de Tiempo */
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: var(--card-bg);
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            width: fit-content;
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .filter-btn.active {
+            background: var(--accent);
+            color: var(--bg-color);
+        }
+
         .chart-title {
             font-size: 1.25rem;
             margin-bottom: 20px;
@@ -179,6 +213,12 @@
             ● Sistema Online
         </div>
     </header>
+
+    <div class="filter-group">
+        <button class="filter-btn" onclick="changeRange('today')" id="btn-today">Hoy</button>
+        <button class="filter-btn" onclick="changeRange('week')" id="btn-week">Semana</button>
+        <button class="filter-btn active" onclick="changeRange('all')" id="btn-all">Todo el tiempo</button>
+    </div>
 
     <div class="stats-grid">
         <div class="card">
@@ -232,16 +272,30 @@
 
     <script>
         let charts = {};
+        let currentRange = 'all';
 
-        async function loadStats() {
+        async function loadStats(range = currentRange) {
             try {
-                const response = await fetch('/api/dashboard/stats');
+                const response = await fetch(`/api/dashboard/stats?range=${range}`);
                 const data = await response.json();
 
                 // Actualizar contadores
                 document.getElementById('total-players').innerText = data.total_players;
                 document.getElementById('total-games').innerText = data.total_games;
-                document.getElementById('record-day').innerText = data.record_of_the_day.toLocaleString();
+
+                // Actualizar tarjeta de Récord según el rango
+                const recordVal = data.record_in_range;
+                const recordLabel = document.querySelector('#record-day').previousElementSibling;
+                document.getElementById('record-day').innerText = recordVal.toLocaleString();
+
+                if (range === 'today') recordLabel.innerText = "🏆 Récord de Hoy";
+                else if (range === 'week') recordLabel.innerText = "🏆 Récord de la Semana";
+                else recordLabel.innerText = "🏆 Récord Histórico";
+
+                // Manejar botones activos
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(`btn-${range}`).classList.add('active');
+                currentRange = range;
 
                 // Calcular nivel promedio
                 let totalLvl = 0;
@@ -350,6 +404,10 @@
                 document.getElementById('status-badge').style.color = "#ef4444";
                 document.getElementById('status-badge').style.borderColor = "#ef4444";
             }
+        }
+
+        function changeRange(range) {
+            loadStats(range);
         }
 
         // Carga inicial
