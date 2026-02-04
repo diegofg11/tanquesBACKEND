@@ -164,18 +164,29 @@
 
         .charts-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
             width: 100%;
             max-width: 1200px;
+            margin-top: 20px;
         }
 
         .chart-card {
             background: var(--card-bg);
-            padding: 30px;
+            padding: 25px;
             border: 2px solid var(--border-color);
-            border-bottom-width: 5px;
-            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .full-width {
+            grid-column: span 2;
+        }
+
+        .chart-container-fixed {
+            position: relative;
+            height: 350px;
+            width: 100%;
         }
 
         .chart-title {
@@ -412,17 +423,23 @@
     <div class="charts-container">
         <div class="chart-card">
             <div class="chart-title">Top 10 Ranking</div>
-            <canvas id="rankingChart"></canvas>
+            <div class="chart-container-fixed">
+                <canvas id="rankingChart"></canvas>
+            </div>
         </div>
         <div class="chart-card">
             <div class="chart-title">Distribución por Niveles</div>
-            <canvas id="levelChart"></canvas>
+            <div class="chart-container-fixed">
+                <canvas id="levelChart"></canvas>
+            </div>
         </div>
-        <div class="chart-card" style="grid-column: span 2">
-            <div class="chart-title">Actividad Reciente (Partidas/Día)</div>
-            <canvas id="activityChart"></canvas>
+        <div class="chart-card full-width">
+            <div class="chart-title">Actividad Reciente</div>
+            <div class="chart-container-fixed">
+                <canvas id="activityChart"></canvas>
+            </div>
         </div>
-        <div class="chart-card">
+        <div class="chart-card full-width">
             <div class="chart-title">Muro de Actividad</div>
             <div style="overflow-x: auto;">
                 <table class="activity-table">
@@ -541,6 +558,7 @@
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false }
                         },
@@ -573,6 +591,7 @@
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         cutout: '70%',
                         plugins: {
                             legend: { position: 'bottom', labels: { color: '#94a3b8', font: { family: 'MedievalSharp' } } }
@@ -600,6 +619,7 @@
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
                             y: {
@@ -634,82 +654,82 @@
                 const now = new Date();
                 document.getElementById('status-badge').innerHTML = `● Actualizado: ${now.toLocaleTimeString()}`;
 
-            } catch (error) {
-                console.error("Error cargando estadísticas:", error);
-                document.getElementById('status-badge').innerText = "● Error de Conexión";
-                document.getElementById('status-badge').style.color = "#ef4444";
-                document.getElementById('status-badge').style.borderColor = "#ef4444";
-            }
-        }
-
-        function changeRange(range) {
-            loadStats(range);
-        }
-
-        async function searchPlayer() {
-            const username = document.getElementById('playerSearch').value.trim();
-            if (!username) return;
-
-            try {
-                const response = await fetch(`/api/dashboard/user/${username}`);
-                const data = await response.json();
-
-                if (!data.found) {
-                    alert('Hechicero no encontrado en los registros.');
-                    return;
+            } catch (error) { 
+                        console.error("Error cargando estadísticas:", error);
+                        document.getElementById('status-badge').innerText = "● Error de Conexión";
+                        document.getElementById('status-badge').style.color = "#ef4444";
+                        document.getElementById('status-badge').style.borderColor = "#ef4444";
+                    }
                 }
 
-                document.getElementById('modalTitle').innerText = `Stats de ${data.username}`;
-                document.getElementById('user-total-games').innerText = data.total_games;
-                document.getElementById('user-max-score').innerText = data.max_score.toLocaleString();
-                document.getElementById('user-avg-score').innerText = data.avg_score.toLocaleString();
+        function changeRange(range) {
+                        loadStats(range);
+                    }
 
-                const body = document.getElementById('user-games-body');
-                body.innerHTML = '';
-                data.games.forEach(g => {
-                    body.innerHTML += `
+        async function searchPlayer() {
+                        const username = document.getElementById('playerSearch').value.trim();
+                        if (!username) return;
+
+                        try {
+                            const response = await fetch(`/api/dashboard/user/${username}`);
+                            const data = await response.json();
+
+                            if (!data.found) {
+                                alert('Hechicero no encontrado en los registros.');
+                                return;
+                            }
+
+                            document.getElementById('modalTitle').innerText = `Stats de ${data.username}`;
+                            document.getElementById('user-total-games').innerText = data.total_games;
+                            document.getElementById('user-max-score').innerText = data.max_score.toLocaleString();
+                            document.getElementById('user-avg-score').innerText = data.avg_score.toLocaleString();
+
+                            const body = document.getElementById('user-games-body');
+                            body.innerHTML = '';
+                            data.games.forEach(g => {
+                                body.innerHTML += `
                         <tr>
                             <td>Lvl ${g.nivel}</td>
                             <td style="color: var(--accent)">${g.score.toLocaleString()}</td>
                             <td>${g.fecha}</td>
                         </tr>
                     `;
-                });
+                            });
 
-                document.getElementById('exportBtn').onclick = () => exportCSV(data);
-                document.getElementById('searchModal').style.display = 'block';
+                            document.getElementById('exportBtn').onclick = () => exportCSV(data);
+                            document.getElementById('searchModal').style.display = 'block';
 
-            } catch (error) {
-                console.error("Error al buscar jugador:", error);
-            }
-        }
+                        } catch (error) {
+                            console.error("Error al buscar jugador:", error);
+                        }
+                    }
 
         function closeModal() {
-            document.getElementById('searchModal').style.display = 'none';
-        }
+                        document.getElementById('searchModal').style.display = 'none';
+                    }
 
         function exportCSV(data) {
-            let csv = "Nivel,Puntuacion,Fecha\n";
-            data.games.forEach(g => {
-                csv += `${g.nivel},${g.score},${g.fecha}\n`;
-            });
+                        let csv = "Nivel,Puntuacion,Fecha\n";
+                        data.games.forEach(g => {
+                            csv += `${g.nivel},${g.score},${g.fecha}\n`;
+                        });
 
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('hidden', '');
-            a.setAttribute('href', url);
-            a.setAttribute('download', `stats_${data.username}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.setAttribute('hidden', '');
+                        a.setAttribute('href', url);
+                        a.setAttribute('download', `stats_${data.username}.csv`);
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }
 
         // Carga inicial
         loadStats();
 
-        // Auto-actualización cada 30 segundos
-        setInterval(loadStats, 30000);
+                // Auto-actualización cada 30 segundos
+                setInterval(loadStats, 30000);
     </script>
 </body>
 
