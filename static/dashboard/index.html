@@ -511,7 +511,7 @@
 
                 // Actualizar tarjeta de Récord según el rango
                 const recordVal = data.record_in_range;
-                const recordLabel = document.querySelector('#record-day').previousElementSibling;
+                const recordLabel = document.querySelector('#record-day').closest('.card').querySelector('.stat-label');
                 document.getElementById('record-day').innerText = recordVal.toLocaleString();
 
                 if (range === 'today') recordLabel.innerText = "🏆 Récord de Hoy";
@@ -522,9 +522,10 @@
                 document.getElementById('record-user').innerText = `Por: ${data.record_in_range_user || '---'}`;
 
                 // Actualizar título de la gráfica de actividad
-                const activityTitle = document.querySelector('#activityChart').previousElementSibling;
-                if (range === 'today') activityTitle.innerText = "Actividad (Partidas/Hora)";
-                else activityTitle.innerText = "Actividad (Partidas/Día)";
+                const activityCard = document.querySelector('#activityChart').closest('.chart-card');
+                const activityTitle = activityCard.querySelector('.chart-title');
+                if (range === 'today') activityTitle.innerText = "Actividad Reciente (Partidas/Hora)";
+                else activityTitle.innerText = "Actividad Reciente (Partidas/Día)";
 
                 // Manejar botones activos
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -654,82 +655,82 @@
                 const now = new Date();
                 document.getElementById('status-badge').innerHTML = `● Actualizado: ${now.toLocaleTimeString()}`;
 
-            } catch (error) { 
-                        console.error("Error cargando estadísticas:", error);
-                        document.getElementById('status-badge').innerText = "● Error de Conexión";
-                        document.getElementById('status-badge').style.color = "#ef4444";
-                        document.getElementById('status-badge').style.borderColor = "#ef4444";
-                    }
-                }
+            } catch (error) {
+                console.error("Error cargando estadísticas:", error);
+                document.getElementById('status-badge').innerText = "● Error de Conexión";
+                document.getElementById('status-badge').style.color = "#ef4444";
+                document.getElementById('status-badge').style.borderColor = "#ef4444";
+            }
+        }
 
         function changeRange(range) {
-                        loadStats(range);
-                    }
+            loadStats(range);
+        }
 
         async function searchPlayer() {
-                        const username = document.getElementById('playerSearch').value.trim();
-                        if (!username) return;
+            const username = document.getElementById('playerSearch').value.trim();
+            if (!username) return;
 
-                        try {
-                            const response = await fetch(`/api/dashboard/user/${username}`);
-                            const data = await response.json();
+            try {
+                const response = await fetch(`/api/dashboard/user/${username}`);
+                const data = await response.json();
 
-                            if (!data.found) {
-                                alert('Hechicero no encontrado en los registros.');
-                                return;
-                            }
+                if (!data.found) {
+                    alert('Hechicero no encontrado en los registros.');
+                    return;
+                }
 
-                            document.getElementById('modalTitle').innerText = `Stats de ${data.username}`;
-                            document.getElementById('user-total-games').innerText = data.total_games;
-                            document.getElementById('user-max-score').innerText = data.max_score.toLocaleString();
-                            document.getElementById('user-avg-score').innerText = data.avg_score.toLocaleString();
+                document.getElementById('modalTitle').innerText = `Stats de ${data.username}`;
+                document.getElementById('user-total-games').innerText = data.total_games;
+                document.getElementById('user-max-score').innerText = data.max_score.toLocaleString();
+                document.getElementById('user-avg-score').innerText = data.avg_score.toLocaleString();
 
-                            const body = document.getElementById('user-games-body');
-                            body.innerHTML = '';
-                            data.games.forEach(g => {
-                                body.innerHTML += `
+                const body = document.getElementById('user-games-body');
+                body.innerHTML = '';
+                data.games.forEach(g => {
+                    body.innerHTML += `
                         <tr>
                             <td>Lvl ${g.nivel}</td>
                             <td style="color: var(--accent)">${g.score.toLocaleString()}</td>
                             <td>${g.fecha}</td>
                         </tr>
                     `;
-                            });
+                });
 
-                            document.getElementById('exportBtn').onclick = () => exportCSV(data);
-                            document.getElementById('searchModal').style.display = 'block';
+                document.getElementById('exportBtn').onclick = () => exportCSV(data);
+                document.getElementById('searchModal').style.display = 'block';
 
-                        } catch (error) {
-                            console.error("Error al buscar jugador:", error);
-                        }
-                    }
+            } catch (error) {
+                console.error("Error al buscar jugador:", error);
+            }
+        }
 
         function closeModal() {
-                        document.getElementById('searchModal').style.display = 'none';
-                    }
+            document.getElementById('searchModal').style.display = 'none';
+        }
 
         function exportCSV(data) {
-                        let csv = "Nivel,Puntuacion,Fecha\n";
-                        data.games.forEach(g => {
-                            csv += `${g.nivel},${g.score},${g.fecha}\n`;
-                        });
+            let csv = "Nivel,Puntuacion,Fecha\n";
+            data.games.forEach(g => {
+                csv += `${g.nivel},${g.score},${g.fecha}\n`;
+            });
 
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.setAttribute('hidden', '');
-                        a.setAttribute('href', url);
-                        a.setAttribute('download', `stats_${data.username}.csv`);
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                    }
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `stats_${data.username}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
 
         // Carga inicial
         loadStats();
 
-                // Auto-actualización cada 30 segundos
-                setInterval(loadStats, 30000);
+        // Auto-actualización cada 30 segundos
+        setInterval(loadStats, 30000);
     </script>
 </body>
 
