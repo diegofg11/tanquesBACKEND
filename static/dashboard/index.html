@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -98,6 +99,49 @@
             min-height: 350px;
         }
 
+        /* Tabla de Actividad */
+        .activity-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .activity-table th,
+        .activity-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .activity-table th {
+            color: var(--text-secondary);
+            font-weight: 400;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .badge-level {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .level-1 {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+        }
+
+        .level-2 {
+            background: rgba(129, 140, 248, 0.2);
+            color: #818cf8;
+        }
+
+        .level-3 {
+            background: rgba(192, 132, 252, 0.2);
+            color: #c084fc;
+        }
+
         .chart-title {
             font-size: 1.25rem;
             margin-bottom: 20px;
@@ -122,6 +166,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <header>
@@ -129,7 +174,8 @@
             <h1>Tanques API Dashboard</h1>
             <p style="color: var(--text-secondary)">Estadísticas en tiempo real de tu base de datos Firebase</p>
         </div>
-        <div id="status-badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--success)">
+        <div id="status-badge"
+            style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--success)">
             ● Sistema Online
         </div>
     </header>
@@ -162,6 +208,22 @@
             <div class="chart-title">Actividad Reciente (Partidas/Día)</div>
             <canvas id="activityChart"></canvas>
         </div>
+        <div class="chart-card" style="grid-column: span 2">
+            <div class="chart-title">Muro de Actividad (Live Feed)</div>
+            <table class="activity-table">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Nivel</th>
+                        <th>Puntos</th>
+                        <th>Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="live-feed-body">
+                    <!-- Se llena con JS -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -173,11 +235,11 @@
                 // Actualizar contadores
                 document.getElementById('total-players').innerText = data.total_players;
                 document.getElementById('total-games').innerText = data.total_games;
-                
+
                 // Calcular nivel promedio
                 let totalLvl = 0;
                 let count = 0;
-                for(let lvl in data.level_distribution) {
+                for (let lvl in data.level_distribution) {
                     totalLvl += parseInt(lvl) * data.level_distribution[lvl];
                     count += data.level_distribution[lvl];
                 }
@@ -251,6 +313,21 @@
                     }
                 });
 
+                // 4. Llenar Muro de Actividad
+                const feedBody = document.getElementById('live-feed-body');
+                feedBody.innerHTML = '';
+                data.live_feed.forEach(game => {
+                    const row = `
+                        <tr>
+                            <td style="font-weight: 600">${game.username}</td>
+                            <td><span class="badge-level level-${game.nivel}">Lvl ${game.nivel}</span></td>
+                            <td style="color: var(--accent); font-weight: 600">${game.score.toLocaleString()}</td>
+                            <td style="color: var(--text-secondary); font-size: 0.9rem">${game.fecha}</td>
+                        </tr>
+                    `;
+                    feedBody.innerHTML += row;
+                });
+
             } catch (error) {
                 console.error("Error cargando estadísticas:", error);
                 document.getElementById('status-badge').innerText = "● Error de Conexión";
@@ -262,4 +339,5 @@
         loadStats();
     </script>
 </body>
+
 </html>
