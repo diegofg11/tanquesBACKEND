@@ -326,24 +326,23 @@
 
         .modal-content {
             background-color: var(--card-bg);
-            margin: 20px auto;
-            /* Reducido para mejor ajuste */
-            padding: 30px;
+            margin: 10px auto;
+            padding: 20px;
             border: 3px solid var(--accent);
-            width: 90%;
-            /* Un poco más ancho en móvil */
-            max-width: 800px;
+            width: 95%;
+            max-width: 700px;
             position: relative;
             box-shadow: 0 0 30px var(--accent-glow);
         }
 
         .close-modal {
             position: absolute;
-            right: 20px;
-            top: 15px;
+            right: 15px;
+            top: 10px;
             color: var(--accent);
-            font-size: 2rem;
+            font-size: 1.8rem;
             cursor: pointer;
+            z-index: 10;
         }
 
         .search-container {
@@ -449,22 +448,22 @@
             <span class="close-modal" onclick="closeModal()">&times;</span>
             <h2 id="modalTitle" style="color: var(--accent); margin-bottom: 20px;">Stats del Hechicero</h2>
 
-            <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
-                <div class="card" style="padding: 15px;">
-                    <div class="stat-label">Partidas</div>
-                    <div id="user-total-games" class="stat-value" style="font-size: 1.8rem;">--</div>
+            <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 15px; gap: 10px;">
+                <div class="card" style="padding: 10px;">
+                    <div class="stat-label" style="font-size: 0.8rem;">Partidas</div>
+                    <div id="user-total-games" class="stat-value" style="font-size: 1.5rem;">--</div>
                 </div>
-                <div class="card" style="padding: 15px;">
-                    <div class="stat-label">Récord Personal</div>
-                    <div id="user-max-score" class="stat-value" style="font-size: 1.8rem;">--</div>
+                <div class="card" style="padding: 10px;">
+                    <div class="stat-label" style="font-size: 0.8rem;">Récord Personal</div>
+                    <div id="user-max-score" class="stat-value" style="font-size: 1.5rem;">--</div>
                 </div>
-                <div class="card" style="padding: 15px;">
-                    <div class="stat-label">Promedio</div>
-                    <div id="user-avg-score" class="stat-value" style="font-size: 1.8rem;">--</div>
+                <div class="card" style="padding: 10px;">
+                    <div class="stat-label" style="font-size: 0.8rem;">Promedio</div>
+                    <div id="user-avg-score" class="stat-value" style="font-size: 1.5rem;">--</div>
                 </div>
             </div>
 
-            <div style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+            <div style="max-height: 180px; overflow-y: auto; margin-bottom: 15px;">
                 <table class="activity-table">
                     <thead>
                         <tr>
