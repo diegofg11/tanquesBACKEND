@@ -9,7 +9,7 @@ router = APIRouter(
 )
 
 @router.get("/stats")
-def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_db)):
+def get_dashboard_stats(time_range: str = "all", db: firestore.Client = Depends(get_db)):
     """
     Recupera estadísticas agregadas para el Dashboard con filtros de tiempo.
     """
@@ -21,9 +21,9 @@ def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_d
     from datetime import timezone
     now = datetime.now(timezone.utc)
     limit_date = None
-    if range == "today":
+    if time_range == "today":
         limit_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    elif range == "week":
+    elif time_range == "week":
         limit_date = now - timedelta(days=7)
     
     # 3. Procesar Partidas
@@ -35,7 +35,7 @@ def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_d
     recent_activity = {} # fecha -> cuenta
 
     # Inicializar con todas las horas si es "hoy" para que la gráfica se vea completa
-    if range == "today":
+    if time_range == "today":
         for h in range(24):
             recent_activity[f"{h:02d}:00"] = 0
 
@@ -68,7 +68,7 @@ def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_d
             
             # Actividad reciente
             if ts:
-                if range == "today":
+                if time_range == "today":
                     fecha_str = ts.strftime("%H:00")
                 else:
                     fecha_str = ts.strftime("%Y-%m-%d")
@@ -112,5 +112,5 @@ def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_d
         "live_feed": live_feed,
         "record_of_the_day": record_of_the_day,
         "record_in_range": record_in_range,
-        "active_range": range
+        "active_range": time_range
     }
