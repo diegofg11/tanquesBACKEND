@@ -89,7 +89,7 @@ def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_d
             "username": d.get("username"),
             "score": d.get("score"),
             "nivel": d.get("nivel"),
-            "fecha": ts.strftime("%d/%m %H:%M") if ts else "N/A"
+            "fecha": ts.strftime("%d/%m | %H:%M") if ts else "N/A"
         })
 
     return {
