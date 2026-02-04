@@ -193,6 +193,10 @@
             <div class="stat-label">Nivel Promedio</div>
             <div id="avg-level" class="stat-value">--</div>
         </div>
+        <div class="card" style="border-color: var(--success); background: rgba(16, 185, 129, 0.05)">
+            <div class="stat-label" style="color: var(--success)">🏆 Récord de Hoy</div>
+            <div id="record-day" class="stat-value" style="color: var(--success)">--</div>
+        </div>
     </div>
 
     <div class="charts-container">
@@ -235,6 +239,7 @@
                 // Actualizar contadores
                 document.getElementById('total-players').innerText = data.total_players;
                 document.getElementById('total-games').innerText = data.total_games;
+                document.getElementById('record-day').innerText = data.record_of_the_day.toLocaleString();
 
                 // Calcular nivel promedio
                 let totalLvl = 0;
