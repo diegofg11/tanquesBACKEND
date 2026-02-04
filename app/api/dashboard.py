@@ -33,6 +33,12 @@ def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_d
     total_games = 0
     level_dist = {1: 0, 2: 0, 3: 0}
     recent_activity = {} # fecha -> cuenta
+
+    # Inicializar con todas las horas si es "hoy" para que la gráfica se vea completa
+    if range == "today":
+        for h in range(24):
+            recent_activity[f"{h:02d}:00"] = 0
+
     record_of_the_day = 0
     record_in_range = 0
     hoy_date = now.date()
@@ -62,7 +68,11 @@ def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_d
             
             # Actividad reciente
             if ts:
-                fecha_str = ts.strftime("%Y-%m-%d")
+                if range == "today":
+                    fecha_str = ts.strftime("%H:00")
+                else:
+                    fecha_str = ts.strftime("%Y-%m-%d")
+                
                 recent_activity[fecha_str] = recent_activity.get(fecha_str, 0) + 1
                 
                 # Récord en el rango seleccionado

@@ -328,6 +328,11 @@
                 else if (range === 'week') recordLabel.innerText = "🏆 Récord de la Semana";
                 else recordLabel.innerText = "🏆 Récord Histórico";
 
+                // Actualizar título de la gráfica de actividad
+                const activityTitle = document.querySelector('#activityChart').previousElementSibling;
+                if (range === 'today') activityTitle.innerText = "Actividad (Partidas/Hora)";
+                else activityTitle.innerText = "Actividad (Partidas/Día)";
+
                 // Manejar botones activos
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById(`btn-${range}`).classList.add('active');
