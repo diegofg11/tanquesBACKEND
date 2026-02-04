@@ -394,10 +394,17 @@
         </div>
     </header>
 
-    <div class="filter-group">
-        <button class="filter-btn" onclick="changeRange('today')" id="btn-today">Hoy</button>
-        <button class="filter-btn" onclick="changeRange('week')" id="btn-week">Semana</button>
-        <button class="filter-btn active" onclick="changeRange('all')" id="btn-all">Todo el tiempo</button>
+    <div class="filter-group"
+        style="justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto 30px;">
+        <div style="display: flex; gap: 15px;">
+            <button class="filter-btn" onclick="changeRange('today')" id="btn-today">Hoy</button>
+            <button class="filter-btn" onclick="changeRange('week')" id="btn-week">Semana</button>
+            <button class="filter-btn active" onclick="changeRange('all')" id="btn-all">Todo el tiempo</button>
+        </div>
+        <button class="filter-btn" onclick="exportCurrentStats()"
+            style="border-color: var(--success); color: var(--success); font-size: 1rem; padding: 10px 20px;">
+            📥 Exportar Periodo (CSV)
+        </button>
     </div>
 
     <div class="stats-grid">
@@ -724,6 +731,40 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+        }
+
+        async function exportCurrentStats() {
+            try {
+                const response = await fetch(`/api/dashboard/stats?time_range=${currentRange}`);
+                const data = await response.json();
+
+                if (!data.live_feed || data.live_feed.length === 0) {
+                    alert('No hay datos para exportar en este periodo.');
+                    return;
+                }
+
+                let csv = "Usuario,Nivel,Puntuacion,Fecha\n";
+                data.live_feed.forEach(g => {
+                    csv += `${g.username},${g.nivel},${g.score},${g.fecha}\n`;
+                });
+
+                const now = new Date();
+                const dateStr = now.toISOString().split('T')[0];
+                const fileName = `stats_${currentRange}_${dateStr}.csv`;
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.setAttribute('hidden', '');
+                a.setAttribute('href', url);
+                a.setAttribute('download', fileName);
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } catch (error) {
+                console.error("Error al exportar:", error);
+                alert("Error al generar el archivo CSV.");
+            }
         }
 
         // Carga inicial
