@@ -121,42 +121,61 @@ def get_user_stats(username: str, db: firestore.Client = Depends(get_db)):
     Busca todas las partidas de un usuario específico y devuelve sus stats.
     """
     scores_ref = db.collection("scores")
-    user_query = scores_ref.where("username", "==", username).order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
     
-    games = []
-    total_score = 0
-    max_score = 0
-    levels_count = {1: 0, 2: 0, 3: 0}
-
-    for doc in user_query:
-        data = doc.to_dict()
-        ts = data.get("timestamp")
-        score = data.get("score", 0)
-        lvl = data.get("nivel", 1)
+    try:
+        # Intentar varias combinaciones de mayúsculas/minúsculas ya que Firestore es sensible
+        variations = [username, username.lower(), username.capitalize(), username.upper()]
+        variations = list(dict.fromkeys(variations))
         
-        total_score += score
-        if score > max_score:
-            max_score = score
-        
-        if lvl in levels_count:
-            levels_count[lvl] += 1
-        
-        games.append({
-            "score": score,
-            "nivel": lvl,
-            "fecha": ts.strftime("%d/%m/%Y %H:%M") if ts else "N/A"
-        })
+        final_user_results = []
+        actual_username = username
 
-    if not games:
-        return {"found": False}
+        for var in variations:
+            # Quitamos order_by de la query para evitar el error de "Index missing"
+            user_query = scores_ref.where("username", "==", var).stream()
+            results = list(user_query)
+            if results:
+                final_user_results = results
+                actual_username = var
+                break
+        
+        if not final_user_results:
+            return {"found": False}
 
-    return {
-        "found": True,
-        "username": username,
-        "total_games": len(games),
-        "total_score": total_score,
-        "avg_score": round(total_score / len(games), 2),
-        "max_score": max_score,
-        "level_distribution": levels_count,
-        "games": games
-    }
+        # Convertir a lista de dicts y ordenar por fecha en Python
+        games = []
+        for doc in final_user_results:
+            data = doc.to_dict()
+            ts = data.get("timestamp")
+            games.append({
+                "score": data.get("score", 0),
+                "nivel": data.get("nivel", 1),
+                "timestamp": ts,
+                "fecha": ts.strftime("%d/%m/%Y %H:%M") if ts else "N/A"
+            })
+        
+        # Ordenar: más reciente primero
+        games.sort(key=lambda x: x["timestamp"] if x["timestamp"] else datetime.min, reverse=True)
+
+        total_score = sum(g["score"] for g in games)
+        max_score = max(g["score"] for g in games) if games else 0
+        
+        levels_count = {1: 0, 2: 0, 3: 0}
+        for g in games:
+            lvl = g["nivel"]
+            if lvl in levels_count:
+                levels_count[lvl] += 1
+
+        return {
+            "found": True,
+            "username": actual_username,
+            "total_games": len(games),
+            "total_score": total_score,
+            "avg_score": round(total_score / len(games), 2),
+            "max_score": max_score,
+            "level_distribution": levels_count,
+            "games": games
+        }
+    except Exception as e:
+        print(f"DEBUG: Error en búsqueda: {str(e)}")
+        return {"found": False, "error": str(e)}
