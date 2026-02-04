@@ -123,28 +123,42 @@ def get_user_stats(username: str, db: firestore.Client = Depends(get_db)):
     scores_ref = db.collection("scores")
     
     try:
-        # Intentar varias combinaciones de mayúsculas/minúsculas ya que Firestore es sensible
+        # 1. Intentar encontrar al usuario en la colección 'users' primero
+        # Esto sirve para ver si existe aunque no tenga partidas.
+        users_ref = db.collection("users")
         variations = [username, username.lower(), username.capitalize(), username.upper()]
         variations = list(dict.fromkeys(variations))
         
-        final_user_results = []
+        target_user = None
         actual_username = username
 
+        # Buscar en 'users' (ID del documento es el username)
         for var in variations:
-            # Quitamos order_by de la query para evitar el error de "Index missing"
-            user_query = scores_ref.where("username", "==", var).stream()
-            results = list(user_query)
-            if results:
-                final_user_results = results
+            user_doc = users_ref.document(var).get()
+            if user_doc.exists:
+                target_user = user_doc
                 actual_username = var
                 break
         
-        if not final_user_results:
-            return {"found": False}
+        # Si no está en 'users', probamos a ver si hay algo en 'scores' con ese nombre
+        # Por si acaso alguien juega sin estar en la colección users (poco probable pero posible)
+        if not target_user:
+            for var in variations:
+                first_score = list(scores_ref.where("username", "==", var).limit(1).stream())
+                if first_score:
+                    actual_username = var
+                    break
+            else:
+                # Si no está en niguno, no existe
+                return {"found": False}
 
+        # 2. Buscar partidas en 'scores'
+        user_query = scores_ref.where("username", "==", actual_username).stream()
+        results = list(user_query)
+        
         # Convertir a lista de dicts y ordenar por fecha en Python
         games = []
-        for doc in final_user_results:
+        for doc in results:
             data = doc.to_dict()
             ts = data.get("timestamp")
             games.append({
@@ -171,7 +185,7 @@ def get_user_stats(username: str, db: firestore.Client = Depends(get_db)):
             "username": actual_username,
             "total_games": len(games),
             "total_score": total_score,
-            "avg_score": round(total_score / len(games), 2),
+            "avg_score": round(total_score / len(games), 2) if games else 0,
             "max_score": max_score,
             "level_distribution": levels_count,
             "games": games
