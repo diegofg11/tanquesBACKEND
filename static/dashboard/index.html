@@ -312,7 +312,7 @@
 
         async function loadStats(range = currentRange) {
             try {
-                const response = await fetch(`/api/dashboard/stats?range=${range}`);
+                const response = await fetch(`/api/dashboard/stats?time_range=${range}`);
                 const data = await response.json();
 
                 // Actualizar contadores
