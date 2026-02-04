@@ -4,29 +4,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tanques API - Dashboard</title>
+    <title>Tanques Potter - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent: #38bdf8;
-            --accent-glow: rgba(56, 189, 248, 0.3);
-            --success: #10b981;
+            --bg-color: rgb(20, 15, 30);
+            --card-bg: rgba(20, 15, 30, 0.95);
+            --accent: #FFD54F;
+            --accent-glow: rgba(255, 213, 79, 0.3);
+            --text-primary: #ECEFF1;
+            --text-secondary: #B0BEC5;
+            --success: #FFD54F;
+            --danger: #B71C1C;
+            --border-color: #795548;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'MedievalSharp', cursive;
         }
 
         body {
-            font-family: 'Outfit', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
-            margin: 0;
-            padding: 20px;
+            min-height: 100vh;
+            padding: 40px;
+            overflow-x: hidden;
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
+        }
+
+        /* Efecto Viñeteado */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
+            pointer-events: none;
+            z-index: 100;
         }
 
         header {
@@ -36,19 +59,64 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 4px solid var(--accent);
         }
 
         h1 {
-            font-size: 2.5rem;
+            font-size: 3rem;
+            color: var(--accent);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            letter-spacing: 2px;
             margin: 0;
-            background: linear-gradient(90deg, #fff, var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            background: rgba(40, 40, 45, 0.95);
+            color: var(--accent);
+            padding: 10px 20px;
+            border-radius: 0;
+            border: 2px solid var(--accent);
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+            width: fit-content;
+        }
+
+        .filter-btn {
+            background: rgba(40, 40, 45, 0.95);
+            border: 3px solid var(--border-color);
+            color: var(--accent);
+            padding: 10px 25px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        .filter-btn:hover {
+            scale: 1.05;
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .filter-btn.active {
+            background: var(--accent);
+            color: var(--bg-color);
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 20px;
             width: 100%;
             max-width: 1200px;
@@ -57,131 +125,68 @@
 
         .card {
             background: var(--card-bg);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border: 2px solid var(--border-color);
+            text-align: center;
+            position: relative;
+            transition: transform 0.3s ease;
         }
 
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 0 15px var(--accent-glow);
+            border-color: var(--accent);
         }
 
-        .stat-value {
-            font-size: 3rem;
-            font-weight: 600;
-            margin: 10px 0;
-            color: var(--accent);
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
+            border: 1px solid rgba(255, 213, 79, 0.1);
+            pointer-events: none;
         }
 
         .stat-label {
             color: var(--text-secondary);
             font-size: 1rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
         }
 
         .charts-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 25px;
+            gap: 30px;
             width: 100%;
             max-width: 1200px;
         }
 
         .chart-card {
             background: var(--card-bg);
-            border-radius: 20px;
-            padding: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            min-height: 350px;
-        }
-
-        /* Tabla de Actividad */
-        .activity-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-
-        .activity-table th,
-        .activity-table td {
-            text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .activity-table th {
-            color: var(--text-secondary);
-            font-weight: 400;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-        }
-
-        .badge-level {
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .level-1 {
-            background: rgba(56, 189, 248, 0.2);
-            color: #38bdf8;
-        }
-
-        .level-2 {
-            background: rgba(129, 140, 248, 0.2);
-            color: #818cf8;
-        }
-
-        .level-3 {
-            background: rgba(192, 132, 252, 0.2);
-            color: #c084fc;
-        }
-
-        /* Filtros de Tiempo */
-        .filter-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            background: var(--card-bg);
-            padding: 6px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            width: fit-content;
-        }
-
-        .filter-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            padding: 8px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-family: inherit;
-            font-weight: 600;
-            transition: all 0.2s ease;
-        }
-
-        .filter-btn:hover {
-            color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .filter-btn.active {
-            background: var(--accent);
-            color: var(--bg-color);
+            padding: 30px;
+            border: 2px solid var(--border-color);
+            border-bottom-width: 5px;
+            min-height: 400px;
         }
 
         .chart-title {
-            font-size: 1.25rem;
-            margin-bottom: 20px;
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: var(--accent);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .chart-title::before {
@@ -193,9 +198,41 @@
             border-radius: 2px;
         }
 
-        @media (max-width: 600px) {
+        /* Tabla de Actividad Potter Style */
+        .activity-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .activity-table th {
+            text-align: left;
+            padding: 15px;
+            color: var(--accent);
+            border-bottom: 2px solid var(--border-color);
+            font-size: 1.1rem;
+        }
+
+        .activity-table td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(121, 85, 72, 0.2);
+            font-size: 1.1rem;
+        }
+
+        .badge-level {
+            padding: 5px 12px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: rgba(255, 213, 79, 0.05);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 900px) {
             .charts-container {
                 grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2rem;
             }
         }
     </style>
@@ -205,11 +242,10 @@
 
     <header>
         <div>
-            <h1>Tanques API Dashboard</h1>
-            <p style="color: var(--text-secondary)">Estadísticas en tiempo real de tu base de datos Firebase</p>
+            <h1>Tanques Potter Stats</h1>
+            <p style="color: var(--text-secondary)">Panel de Control para los Maestros del Tanque</p>
         </div>
-        <div id="status-badge"
-            style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--success)">
+        <div id="status-badge" class="status-badge">
             ● Sistema Online
         </div>
     </header>
@@ -316,16 +352,27 @@
                         datasets: [{
                             label: 'Puntuación',
                             data: data.top_ranking.map(r => r.score),
-                            backgroundColor: '#38bdf8',
-                            borderRadius: 8
+                            backgroundColor: '#FFD54F',
+                            borderColor: '#795548',
+                            borderWidth: 1,
+                            borderRadius: 0
                         }]
                     },
                     options: {
                         responsive: true,
-                        plugins: { legend: { display: false } },
+                        plugins: {
+                            legend: { display: false }
+                        },
                         scales: {
-                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
-                            x: { grid: { display: false } }
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(121, 85, 72, 0.2)' },
+                                ticks: { color: '#B0BEC5' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#B0BEC5' }
+                            }
                         }
                     }
                 });
@@ -338,7 +385,8 @@
                         labels: ['Nivel 1', 'Nivel 2', 'Nivel 3'],
                         datasets: [{
                             data: [data.level_distribution[1], data.level_distribution[2], data.level_distribution[3]],
-                            backgroundColor: ['#38bdf8', '#818cf8', '#c084fc'],
+                            backgroundColor: ['#795548', '#FF8F00', '#FFD54F'],
+                            borderColor: 'transparent',
                             borderWidth: 0
                         }]
                     },
@@ -346,7 +394,7 @@
                         responsive: true,
                         cutout: '70%',
                         plugins: {
-                            legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                            legend: { position: 'bottom', labels: { color: '#94a3b8', font: { family: 'MedievalSharp' } } }
                         }
                     }
                 });
@@ -361,18 +409,27 @@
                         datasets: [{
                             label: 'Partidas',
                             data: sortedDates.map(d => data.recent_activity[d]),
-                            borderColor: '#38bdf8',
+                            borderColor: '#FFD54F',
+                            borderWidth: 3,
                             fill: true,
-                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                            tension: 0.4
+                            backgroundColor: 'rgba(255, 213, 79, 0.1)',
+                            tension: 0.4,
+                            pointBackgroundColor: '#FFD54F'
                         }]
                     },
                     options: {
                         responsive: true,
                         plugins: { legend: { display: false } },
                         scales: {
-                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
-                            x: { grid: { display: false } }
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(121, 85, 72, 0.1)' },
+                                ticks: { color: '#B0BEC5' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#B0BEC5' }
+                            }
                         }
                     }
                 });
@@ -383,8 +440,8 @@
                 data.live_feed.forEach(game => {
                     const row = `
                         <tr>
-                            <td style="font-weight: 600">${game.username}</td>
-                            <td><span class="badge-level level-${game.nivel}">Lvl ${game.nivel}</span></td>
+                            <td style="font-weight: 600; color: white;">${game.username}</td>
+                            <td><span class="badge-level">Lvl ${game.nivel}</span></td>
                             <td style="color: var(--accent); font-weight: 600">${game.score.toLocaleString()}</td>
                             <td style="color: var(--text-secondary); font-size: 0.9rem">${game.fecha}</td>
                         </tr>
@@ -395,8 +452,6 @@
                 // Actualizar timestamp de última actualización
                 const now = new Date();
                 document.getElementById('status-badge').innerHTML = `● Actualizado: ${now.toLocaleTimeString()}`;
-                document.getElementById('status-badge').style.color = "var(--success)";
-                document.getElementById('status-badge').style.borderColor = "var(--success)";
 
             } catch (error) {
                 console.error("Error cargando estadísticas:", error);
