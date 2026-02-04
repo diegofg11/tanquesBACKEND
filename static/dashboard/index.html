@@ -290,14 +290,74 @@
             .activity-table td,
             .activity-table th {
                 padding: 10px 5px;
-                font-size: 0.9rem;
+                gap: 10px;
+            }
+
+            .search-input {
+                background: rgba(0, 0, 0, 0.3);
+                border: 2px solid var(--border-color);
+                color: white;
+                padding: 10px 15px;
+                font-size: 1.1rem;
+                width: 250px;
+            }
+
+            .search-input:focus {
+                border-color: var(--accent);
+                outline: none;
             }
         }
 
-        @media (max-width: 400px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
+        /* Modal Potter Style */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            margin: 5% auto;
+            padding: 30px;
+            border: 3px solid var(--accent);
+            width: 80%;
+            max-width: 800px;
+            position: relative;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            color: var(--accent);
+            font-size: 2rem;
+            cursor: pointer;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--border-color);
+            color: white;
+            padding: 10px 15px;
+            font-size: 1.1rem;
+            width: 250px;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            outline: none;
         }
     </style>
 </head>
@@ -308,6 +368,11 @@
         <div>
             <h1>Arcane Beasts Arena</h1>
             <p style="color: var(--text-secondary)">Panel de Control para los Maestros del Tanque</p>
+        </div>
+        <div class="search-container">
+            <input type="text" id="playerSearch" class="search-input" placeholder="Buscar hechicero...">
+            <button class="filter-btn" onclick="searchPlayer()"
+                style="border-width: 2px; padding: 5px 15px;">🔍</button>
         </div>
         <div id="status-badge" class="status-badge">
             ● Sistema Online
@@ -352,24 +417,63 @@
             <div class="chart-title">Actividad Reciente (Partidas/Día)</div>
             <canvas id="activityChart"></canvas>
         </div>
-        <div class="chart-card" style="grid-column: span 2">
-            <div class="chart-title">Muro de Actividad (Live Feed)</div>
-            <table class="activity-table">
-                <thead>
-                    <tr>
-                        <th>Usuario</th>
-                        <th>Nivel</th>
-                        <th>Puntos</th>
-                        <th>Fecha / Hora</th>
-                    </tr>
-                </thead>
-                <tbody id="live-feed-body">
-                    <!-- Se llena con JS -->
-                </tbody>
-            </table>
+        <div class="chart-card">
+            <div class="chart-title">Muro de Actividad</div>
+            <div style="overflow-x: auto;">
+                <table class="activity-table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Nivel</th>
+                            <th>Puntos</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="live-feed-body">
+                        <!-- Se llena vía JS -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
+    <!-- Modal de Resultados de Búsqueda -->
+    <div id="searchModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle" style="color: var(--accent); margin-bottom: 20px;">Stats del Hechicero</h2>
+
+            <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+                <div class="card" style="padding: 15px;">
+                    <div class="stat-label">Partidas</div>
+                    <div id="user-total-games" class="stat-value" style="font-size: 1.8rem;">--</div>
+                </div>
+                <div class="card" style="padding: 15px;">
+                    <div class="stat-label">Récord Personal</div>
+                    <div id="user-max-score" class="stat-value" style="font-size: 1.8rem;">--</div>
+                </div>
+                <div class="card" style="padding: 15px;">
+                    <div class="stat-label">Promedio</div>
+                    <div id="user-avg-score" class="stat-value" style="font-size: 1.8rem;">--</div>
+                </div>
+            </div>
+
+            <div style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+                <table class="activity-table">
+                    <thead>
+                        <tr>
+                            <th>Nivel</th>
+                            <th>Puntos</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-games-body"></tbody>
+                </table>
+            </div>
+
+            <button class="filter-btn" id="exportBtn" style="width: 100%;">📥 Descargar Pergamino (CSV)</button>
+        </div>
+    </div>
     <script>
         let charts = {};
         let currentRange = 'all';
@@ -532,6 +636,65 @@
 
         function changeRange(range) {
             loadStats(range);
+        }
+
+        async function searchPlayer() {
+            const username = document.getElementById('playerSearch').value.trim();
+            if (!username) return;
+
+            try {
+                const response = await fetch(`/api/dashboard/user/${username}`);
+                const data = await response.json();
+
+                if (!data.found) {
+                    alert('Hechicero no encontrado en los registros.');
+                    return;
+                }
+
+                document.getElementById('modalTitle').innerText = `Stats de ${data.username}`;
+                document.getElementById('user-total-games').innerText = data.total_games;
+                document.getElementById('user-max-score').innerText = data.max_score.toLocaleString();
+                document.getElementById('user-avg-score').innerText = data.avg_score.toLocaleString();
+
+                const body = document.getElementById('user-games-body');
+                body.innerHTML = '';
+                data.games.forEach(g => {
+                    body.innerHTML += `
+                        <tr>
+                            <td>Lvl ${g.nivel}</td>
+                            <td style="color: var(--accent)">${g.score.toLocaleString()}</td>
+                            <td>${g.fecha}</td>
+                        </tr>
+                    `;
+                });
+
+                document.getElementById('exportBtn').onclick = () => exportCSV(data);
+                document.getElementById('searchModal').style.display = 'block';
+
+            } catch (error) {
+                console.error("Error al buscar jugador:", error);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('searchModal').style.display = 'none';
+        }
+
+        function exportCSV(data) {
+            let csv = "Nivel,Puntuacion,Fecha\n";
+            data.games.forEach(g => {
+                csv += `${g.nivel},${g.score},${g.fecha}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `stats_${data.username}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
 
         // Carga inicial

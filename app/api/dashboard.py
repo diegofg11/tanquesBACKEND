@@ -114,3 +114,49 @@ def get_dashboard_stats(time_range: str = "all", db: firestore.Client = Depends(
         "record_in_range": record_in_range,
         "active_range": time_range
     }
+
+@router.get("/user/{username}")
+def get_user_stats(username: str, db: firestore.Client = Depends(get_db)):
+    """
+    Busca todas las partidas de un usuario específico y devuelve sus stats.
+    """
+    scores_ref = db.collection("scores")
+    user_query = scores_ref.where("username", "==", username).order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+    
+    games = []
+    total_score = 0
+    max_score = 0
+    levels_count = {1: 0, 2: 0, 3: 0}
+
+    for doc in user_query:
+        data = doc.to_dict()
+        ts = data.get("timestamp")
+        score = data.get("score", 0)
+        lvl = data.get("nivel", 1)
+        
+        total_score += score
+        if score > max_score:
+            max_score = score
+        
+        if lvl in levels_count:
+            levels_count[lvl] += 1
+        
+        games.append({
+            "score": score,
+            "nivel": lvl,
+            "fecha": ts.strftime("%d/%m/%Y %H:%M") if ts else "N/A"
+        })
+
+    if not games:
+        return {"found": False}
+
+    return {
+        "found": True,
+        "username": username,
+        "total_games": len(games),
+        "total_score": total_score,
+        "avg_score": round(total_score / len(games), 2),
+        "max_score": max_score,
+        "level_distribution": levels_count,
+        "games": games
+    }
