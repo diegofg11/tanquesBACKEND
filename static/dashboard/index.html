@@ -231,6 +231,8 @@
     </div>
 
     <script>
+        let charts = {};
+
         async function loadStats() {
             try {
                 const response = await fetch('/api/dashboard/stats');
@@ -252,7 +254,8 @@
                 document.getElementById('avg-level').innerText = avg;
 
                 // 1. Gráfica de Ranking (Barras)
-                new Chart(document.getElementById('rankingChart'), {
+                if (charts.ranking) charts.ranking.destroy();
+                charts.ranking = new Chart(document.getElementById('rankingChart'), {
                     type: 'bar',
                     data: {
                         labels: data.top_ranking.map(r => r.username),
@@ -274,7 +277,8 @@
                 });
 
                 // 2. Gráfica de Niveles (Doughnut)
-                new Chart(document.getElementById('levelChart'), {
+                if (charts.levels) charts.levels.destroy();
+                charts.levels = new Chart(document.getElementById('levelChart'), {
                     type: 'doughnut',
                     data: {
                         labels: ['Nivel 1', 'Nivel 2', 'Nivel 3'],
@@ -295,7 +299,8 @@
 
                 // 3. Gráfica de Actividad (Línea)
                 const sortedDates = Object.keys(data.recent_activity).sort();
-                new Chart(document.getElementById('activityChart'), {
+                if (charts.activity) charts.activity.destroy();
+                charts.activity = new Chart(document.getElementById('activityChart'), {
                     type: 'line',
                     data: {
                         labels: sortedDates,
@@ -333,6 +338,12 @@
                     feedBody.innerHTML += row;
                 });
 
+                // Actualizar timestamp de última actualización
+                const now = new Date();
+                document.getElementById('status-badge').innerHTML = `● Actualizado: ${now.toLocaleTimeString()}`;
+                document.getElementById('status-badge').style.color = "var(--success)";
+                document.getElementById('status-badge').style.borderColor = "var(--success)";
+
             } catch (error) {
                 console.error("Error cargando estadísticas:", error);
                 document.getElementById('status-badge').innerText = "● Error de Conexión";
@@ -341,7 +352,11 @@
             }
         }
 
+        // Carga inicial
         loadStats();
+
+        // Auto-actualización cada 30 segundos
+        setInterval(loadStats, 30000);
     </script>
 </body>
 
