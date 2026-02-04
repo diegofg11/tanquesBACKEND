@@ -40,12 +40,15 @@ def get_dashboard_stats(time_range: str = "all", db: firestore.Client = Depends(
             recent_activity[f"{h:02d}:00"] = 0
 
     record_of_the_day = 0
+    record_of_the_day_user = "---"
     record_in_range = 0
+    record_in_range_user = "---"
     hoy_date = now.date()
 
     for doc in all_scores:
         data = doc.to_dict()
         ts = data.get("timestamp")
+        username_score = data.get("username", "Anon")
         
         # Filtro de tiempo: Si hay límite y la partida es anterior, la ignoramos para stats rángo
         is_in_range = True
@@ -57,6 +60,7 @@ def get_dashboard_stats(time_range: str = "all", db: firestore.Client = Depends(
             score = data.get("score", 0)
             if score > record_of_the_day:
                 record_of_the_day = score
+                record_of_the_day_user = username_score
 
         # --- Stats dependientes del Filtro ---
         if is_in_range:
@@ -79,6 +83,7 @@ def get_dashboard_stats(time_range: str = "all", db: firestore.Client = Depends(
                 score = data.get("score", 0)
                 if score > record_in_range:
                     record_in_range = score
+                    record_in_range_user = username_score
 
     # 4. Ranking (Top 10 Global - Mantener global para competitividad)
     ranking_data = []
@@ -111,7 +116,9 @@ def get_dashboard_stats(time_range: str = "all", db: firestore.Client = Depends(
         "top_ranking": ranking_data,
         "live_feed": live_feed,
         "record_of_the_day": record_of_the_day,
+        "record_of_the_day_user": record_of_the_day_user,
         "record_in_range": record_in_range,
+        "record_in_range_user": record_in_range_user,
         "active_range": time_range
     }
 

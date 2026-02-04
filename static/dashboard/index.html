@@ -401,6 +401,7 @@
         <div class="card" style="border-color: var(--success); background: rgba(16, 185, 129, 0.05)">
             <div class="stat-label" style="color: var(--success)">🏆 Récord de Hoy</div>
             <div id="record-day" class="stat-value" style="color: var(--success)">--</div>
+            <div id="record-user" style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 5px;">---</div>
         </div>
     </div>
 
@@ -495,6 +496,9 @@
                 if (range === 'today') recordLabel.innerText = "🏆 Récord de Hoy";
                 else if (range === 'week') recordLabel.innerText = "🏆 Récord de la Semana";
                 else recordLabel.innerText = "🏆 Récord Histórico";
+
+                // Mostrar el usuario del récord
+                document.getElementById('record-user').innerText = `Por: ${data.record_in_range_user || '---'}`;
 
                 // Actualizar título de la gráfica de actividad
                 const activityTitle = document.querySelector('#activityChart').previousElementSibling;
