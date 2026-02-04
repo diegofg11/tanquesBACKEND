@@ -17,8 +17,9 @@ def get_dashboard_stats(range: str = "all", db: firestore.Client = Depends(get_d
     users_ref = db.collection("users")
     total_users = len(list(users_ref.list_documents()))
 
-    # 2. Configurar Fechas para Filtros
-    now = datetime.utcnow()
+    # 2. Configurar Fechas para Filtros (Usar UTC con zona horaria para evitar errores de comparación)
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
     limit_date = None
     if range == "today":
         limit_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
