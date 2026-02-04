@@ -232,7 +232,71 @@
             }
 
             h1 {
+                font-size: 2.2rem;
+            }
+
+            body {
+                padding: 15px;
+            }
+
+            header {
+                flex-direction: column;
+                text-align: center;
+                gap: 20px;
+            }
+
+            .status-badge {
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .filter-group {
+                flex-wrap: wrap;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .filter-btn {
+                flex: 1;
+                padding: 8px 15px;
+                font-size: 1rem;
+                min-width: 100px;
+            }
+
+            .stat-value {
                 font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            /* Hacer la tabla desplazable en móvil */
+            .chart-card:last-child {
+                padding: 15px;
+                overflow-x: auto;
+            }
+
+            .activity-table {
+                min-width: 500px;
+            }
+
+            .activity-table td,
+            .activity-table th {
+                padding: 10px 5px;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
