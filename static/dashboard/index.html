@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tanques API - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.3);
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin: 0;
+            background: linear-gradient(90deg, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 0 15px var(--accent-glow);
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 600;
+            margin: 10px 0;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            min-height: 350px;
+        }
+
+        .chart-title {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        @media (max-width: 600px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>Tanques API Dashboard</h1>
+            <p style="color: var(--text-secondary)">Estadísticas en tiempo real de tu base de datos Firebase</p>
+        </div>
+        <div id="status-badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--success)">
+            ● Sistema Online
+        </div>
+    </header>
+
+    <div class="stats-grid">
+        <div class="card">
+            <div class="stat-label">Total Jugadores</div>
+            <div id="total-players" class="stat-value">--</div>
+        </div>
+        <div class="card">
+            <div class="stat-label">Partidas Jugadas</div>
+            <div id="total-games" class="stat-value">--</div>
+        </div>
+        <div class="card">
+            <div class="stat-label">Nivel Promedio</div>
+            <div id="avg-level" class="stat-value">--</div>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-card">
+            <div class="chart-title">Top 10 Ranking</div>
+            <canvas id="rankingChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Distribución por Niveles</div>
+            <canvas id="levelChart"></canvas>
+        </div>
+        <div class="chart-card" style="grid-column: span 2">
+            <div class="chart-title">Actividad Reciente (Partidas/Día)</div>
+            <canvas id="activityChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/dashboard/stats');
+                const data = await response.json();
+
+                // Actualizar contadores
+                document.getElementById('total-players').innerText = data.total_players;
+                document.getElementById('total-games').innerText = data.total_games;
+                
+                // Calcular nivel promedio
+                let totalLvl = 0;
+                let count = 0;
+                for(let lvl in data.level_distribution) {
+                    totalLvl += parseInt(lvl) * data.level_distribution[lvl];
+                    count += data.level_distribution[lvl];
+                }
+                const avg = count > 0 ? (totalLvl / count).toFixed(1) : "0";
+                document.getElementById('avg-level').innerText = avg;
+
+                // 1. Gráfica de Ranking (Barras)
+                new Chart(document.getElementById('rankingChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.top_ranking.map(r => r.username),
+                        datasets: [{
+                            label: 'Puntuación',
+                            data: data.top_ranking.map(r => r.score),
+                            backgroundColor: '#38bdf8',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+
+                // 2. Gráfica de Niveles (Doughnut)
+                new Chart(document.getElementById('levelChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Nivel 1', 'Nivel 2', 'Nivel 3'],
+                        datasets: [{
+                            data: [data.level_distribution[1], data.level_distribution[2], data.level_distribution[3]],
+                            backgroundColor: ['#38bdf8', '#818cf8', '#c084fc'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                        }
+                    }
+                });
+
+                // 3. Gráfica de Actividad (Línea)
+                const sortedDates = Object.keys(data.recent_activity).sort();
+                new Chart(document.getElementById('activityChart'), {
+                    type: 'line',
+                    data: {
+                        labels: sortedDates,
+                        datasets: [{
+                            label: 'Partidas',
+                            data: sortedDates.map(d => data.recent_activity[d]),
+                            borderColor: '#38bdf8',
+                            fill: true,
+                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error cargando estadísticas:", error);
+                document.getElementById('status-badge').innerText = "● Error de Conexión";
+                document.getElementById('status-badge').style.color = "#ef4444";
+                document.getElementById('status-badge').style.borderColor = "#ef4444";
+            }
+        }
+
+        loadStats();
+    </script>
+</body>
+</html>

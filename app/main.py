@@ -6,7 +6,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from app.api import users
+from fastapi.staticfiles import StaticFiles
+from app.api import users, dashboard
 
 # --- INSTANCIA PRINCIPAL ---
 app = FastAPI(
@@ -24,8 +25,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Aquí conecto mis rutas de usuarios
+# Aquí conecto mis rutas
 app.include_router(users.router)
+app.include_router(dashboard.router)
+
+# Servir archivos estáticos para el Dashboard
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- MIS MANEJADORES DE ERRORES ---
 @app.exception_handler(RequestValidationError)
@@ -42,9 +47,15 @@ async def debug_exception_handler(request: Request, exc: Exception):
         content={"message": "Ha petado algo interno", "detalle": str(exc)},
     )
 
+@app.get("/dashboard")
+async def get_dashboard():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/dashboard/index.html")
+
 @app.get("/")
 async def root():
     return {
         "mensaje": "¡Mi API de Tanques (Single Player) con Firebase está en marcha!",
-        "doc_url": "/docs"
+        "doc_url": "/docs",
+        "dashboard_url": "/dashboard"
     }
