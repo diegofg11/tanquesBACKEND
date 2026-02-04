@@ -319,14 +319,19 @@
             height: 100%;
             background-color: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(5px);
+            overflow-y: auto;
+            /* Permitir scroll si el contenido es muy alto */
+            padding: 20px 0;
         }
 
         .modal-content {
             background-color: var(--card-bg);
-            margin: 5% auto;
+            margin: 20px auto;
+            /* Reducido para mejor ajuste */
             padding: 30px;
             border: 3px solid var(--accent);
-            width: 80%;
+            width: 90%;
+            /* Un poco más ancho en móvil */
             max-width: 800px;
             position: relative;
             box-shadow: 0 0 30px var(--accent-glow);
