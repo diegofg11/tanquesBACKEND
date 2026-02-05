@@ -1,22 +1,35 @@
 """
 Utilidades de seguridad para el hash y verificación de contraseñas.
+
+Utiliza passlib con el esquema pbkdf2_sha256 para garantizar un almacenamiento
+seguro de las credenciales de los usuarios.
 """
 from passlib.context import CryptContext
 
 # Configuración del contexto de criptografía.
-# Se utiliza el esquema pbkdf2_sha256.
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 def verify_password(plain_password, hashed_password):
     """
-    Me he hecho esta función para comparar la contraseña que me escriben
-    con el churro encriptado (hash) que tengo guardado.
+    Verifica si una contraseña en texto plano coincide con su hash almacenado.
+    
+    Args:
+        plain_password (str): La contraseña proporcionada por el usuario.
+        hashed_password (str): El hash guardado en la base de datos.
+        
+    Returns:
+        bool: True si coinciden, False en caso contrario.
     """
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
     """
-    Con esto paso la contraseña de texto plano a un hash que nadie pueda leer.
-    Así si me roban la base de datos, no verán las contraseñas reales.
+    Genera un hash seguro a partir de una contraseña en texto plano.
+    
+    Args:
+        password (str): La contraseña a encriptar.
+        
+    Returns:
+        str: El hash resultante para ser almacenado.
     """
     return pwd_context.hash(password)

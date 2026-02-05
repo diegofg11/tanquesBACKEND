@@ -1,5 +1,8 @@
 """
-Rutas de la API para gestión de usuarios y puntuaciones.
+Rutas de la API para la gestión de usuarios y puntuaciones.
+
+Este módulo implementa el registro, autenticación, gestión de sesiones de juego
+y el sistema de puntuaciones (Leaderboard).
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from google.cloud import firestore
@@ -7,17 +10,32 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserOut, ScoreSubmission, UserProfileOut
 from app.core.security import get_password_hash, verify_password
+import jwt
+import datetime
 
 router = APIRouter(
     prefix="/users",
     tags=["Usuarios"]
 )
 
+# --- SEGURIDAD: CONFIGURACIÓN JWT SIMPLIFICADA ---
+SECRET_KEY = "CLAVE_SUPER_SECRETA_TANQUES_BACKEND" # En prod, usar env vars!
+ALGORITHM = "HS256"
+
 @router.post("/register", response_model=UserOut)
 def register_user(user_data: UserCreate, db: firestore.Client = Depends(get_db)):
     """
-    Registra un nuevo usuario en Firestore.
-    Verifica que el nombre de usuario no exista previamente.
+    Registra un nuevo usuario en el sistema.
+    
+    Verifica que el nombre de usuario no esté en uso. Encripta la contraseña
+    antes de guardarla en Firestore.
+    
+    Args:
+        user_data (UserCreate): El nombre de usuario y la contraseña deseados.
+        db (firestore.Client): Cliente de base de datos inyectado.
+        
+    Returns:
+        UserOut: Los datos del usuario recién creado.
     """
     # 1. Verificar existencia del usuario
     users_ref = db.collection("users")
@@ -46,7 +64,16 @@ def register_user(user_data: UserCreate, db: firestore.Client = Depends(get_db))
 @router.post("/login")
 def login(user_data: UserCreate, db: firestore.Client = Depends(get_db)):
     """
-    Autentica a un usuario verificando sus credenciales contra Firestore.
+    Autentica a un usuario.
+    
+    Compara las credenciales proporcionadas con los datos almacenados en Firestore.
+    
+    Args:
+        user_data (UserCreate): Credenciales enviadas por el usuario.
+        db (firestore.Client): Cliente de base de datos.
+        
+    Returns:
+        dict: Mensaje de éxito y el nombre de usuario si la autenticación es válida.
     """
     # 1. Recuperar documento del usuario
     user_doc = db.collection("users").document(user_data.username).get()
@@ -68,17 +95,19 @@ def login(user_data: UserCreate, db: firestore.Client = Depends(get_db)):
     
     return {"mensaje": "Autenticación exitosa", "username": user_data.username}
 
-# --- SEGURIDAD: CONFIGURACIÓN JWT SIMPLIFICADA ---
-SECRET_KEY = "CLAVE_SUPER_SECRETA_TANQUES_BACKEND" # En prod, usar env vars!
-ALGORITHM = "HS256"
-import jwt
-import datetime
-
 @router.post("/{username}/start-game")
 def start_game(username: str, db: firestore.Client = Depends(get_db)):
     """
-    Genera un TOKEN DE PARTIDA válido por 10 minutos.
-    Unity debe llamar a esto al empezar la partida y guardar el token.
+    Inicia una sesión de juego segura.
+    
+    Genera un TOKEN DE PARTIDA (JWT) válido por 10 minutos. Este token es 
+    obligatorio para enviar puntuaciones al finalizar la partida.
+    
+    Args:
+        username (str): El nombre de usuario que inicia la partida.
+        
+    Returns:
+        dict: El token de sesión generado.
     """
     # Verificar usuario
     user_doc = db.collection("users").document(username).get()
@@ -100,7 +129,18 @@ def start_game(username: str, db: firestore.Client = Depends(get_db)):
 @router.post("/{username}/submit-score")
 def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = Depends(get_db)):
     """
-    Calcula y guarda la puntuación. REQUIERE game_token válido.
+    Calcula, valida y guarda la puntuación de una partida finalizada.
+    
+    Requiere un game_token válido generado previamente por /start-game.
+    Calcula la puntuación final basada en el nivel, tiempo y daño recibido.
+    Actualiza el récord personal del usuario si es necesario.
+    
+    Args:
+        username (str): Nombre del usuario que envía el score.
+        stats (ScoreSubmission): Estadísticas de la partida y token de sesión.
+        
+    Returns:
+        dict: Puntuación de la partida, si es nuevo récord y el récord actual.
     """
     # 0. VERIFICACIÓN DE SEGURIDAD (ANTI-TRAMPAS)
     if not stats.game_token:
@@ -156,8 +196,6 @@ def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = D
     titulo_record = False
     
     # Buscamos el verdadero MAX histórico de este usuario en 'scores'
-    # NOTA: Para evitar errores de índices compuestos en Firestore (FailedPrecondition),
-    # hacemos la query simple por username y calculamos el max en Python.
     scores_query = scores_ref.where("username", "==", username).stream()
     
     true_max_score = 0
@@ -188,8 +226,14 @@ def submit_score(username: str, stats: ScoreSubmission, db: firestore.Client = D
 @router.get("/ranking/top")
 def get_top_scores(db: firestore.Client = Depends(get_db)):
     """
-    Recupera el Top 10 de PUNTUACIONES (Partidas) globales.
-    Puede haber múltiples entradas del mismo usuario si ha jugado muy bien varias veces.
+    Obtiene el Top 10 global de puntuaciones individuales.
+    
+    Retorna una lista de los 10 mejores resultados registrados en el sistema,
+    permitiendo que un mismo usuario aparezca varias veces si tiene múltiples
+    puntuaciones altas.
+    
+    Returns:
+        list: Lista de diccionarios con username, score y fecha.
     """
     scores_ref = db.collection("scores")
     
@@ -210,7 +254,16 @@ def get_top_scores(db: firestore.Client = Depends(get_db)):
 @router.get("/{username}", response_model=UserProfileOut)
 def get_user_profile(username: str, db: firestore.Client = Depends(get_db)):
     """
-    Obtiene perfil COMPLETO: Datos + Stats + Historial (Últimas 5).
+    Recupera el perfil completo de un usuario.
+    
+    Incluye datos básicos del usuario, estadísticas globales y un historial
+    de las últimas 5 partidas realizadas.
+    
+    Args:
+        username (str): El nombre del usuario a consultar.
+        
+    Returns:
+        UserProfileOut: Objeto complejo con toda la información del perfil.
     """
     # 1. Datos Usuario
     doc_ref = db.collection("users").document(username)
@@ -222,9 +275,7 @@ def get_user_profile(username: str, db: firestore.Client = Depends(get_db)):
     user_data = doc.to_dict()
     
     # 2. Historial de Partidas (Últimas 5)
-    # Optimización: Query simple y ordenar en memoria (por seguridad si no hay índices)
     scores_ref = db.collection("scores")
-    # Intentamos traer todos los scores del usuario (si no son miles, es rápido)
     all_scores_stream = scores_ref.where("username", "==", username).stream()
     
     all_scores = []

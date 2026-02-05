@@ -1,6 +1,9 @@
 """
 Configuración de la conexión con Firebase Firestore.
-Inicializa el SDK de Admin y provee la dependencia de base de datos.
+
+Este módulo se encarga de inicializar el SDK de Admin de Firebase utilizando 
+credenciales de una variable de entorno (para producción) o de un archivo 
+JSON local (para desarrollo).
 """
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -44,6 +47,8 @@ db_firestore = firestore.client()
 
 def get_db():
     """
-    Dependencia de FastAPI que yielda el cliente de Firestore.
+    Dependencia de FastAPI que proporciona el cliente de Firestore.
+    Al ser un cliente único para toda la sesión, se utiliza yield para
+    cumplir con el patrón de inyección de dependencias.
     """
     yield db_firestore

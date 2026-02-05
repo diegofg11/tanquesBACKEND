@@ -1,7 +1,13 @@
+"""
+Rutas de la API para el Dashboard administrativo.
+
+Este módulo proporciona estadísticas agregadas, distribución de niveles,
+actividad reciente y utilidades de búsqueda de usuarios para la interfaz web.
+"""
 from fastapi import APIRouter, Depends
 from google.cloud import firestore
 from app.database import get_db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter(
     prefix="/api/dashboard",
@@ -11,14 +17,23 @@ router = APIRouter(
 @router.get("/stats")
 def get_dashboard_stats(time_range: str = "all", db: firestore.Client = Depends(get_db)):
     """
-    Recupera estadísticas agregadas para el Dashboard con filtros de tiempo.
+    Recupera estadísticas globales y filtradas para el panel principal.
+    
+    Calcula el total de jugadores, partidas jugadas, distribución por niveles
+    y datos para las gráficas de actividad.
+    
+    Args:
+        time_range (str): Filtro temporal ("all", "today", "week"). Por defecto "all".
+        db (firestore.Client): Cliente de Firestore.
+        
+    Returns:
+        dict: Un objeto con todas las métricas necesarias para el Dashboard.
     """
     # 1. Total Usuarios (Siempre global)
     users_ref = db.collection("users")
     total_users = len(list(users_ref.list_documents()))
 
     # 2. Configurar Fechas para Filtros (Usar UTC con zona horaria para evitar errores de comparación)
-    from datetime import timezone
     now = datetime.now(timezone.utc)
     limit_date = None
     if time_range == "today":
@@ -125,13 +140,21 @@ def get_dashboard_stats(time_range: str = "all", db: firestore.Client = Depends(
 @router.get("/user/{username}")
 def get_user_stats(username: str, db: firestore.Client = Depends(get_db)):
     """
-    Busca todas las partidas de un usuario específico y devuelve sus stats.
+    Busca estadísticas detalladas y el historial de un usuario específico.
+    
+    Realiza una búsqueda flexible (ignorando mayúsculas) y retorna todas las
+    partidas registradas para ese usuario con cálculos de promedio y máximos.
+    
+    Args:
+        username (str): El nombre de usuario a buscar.
+        
+    Returns:
+        dict: Datos de rendimiento del usuario o indicación de que no existe.
     """
     scores_ref = db.collection("scores")
     
     try:
         # 1. Intentar encontrar al usuario en la colección 'users' primero
-        # Esto sirve para ver si existe aunque no tenga partidas.
         users_ref = db.collection("users")
         variations = [username, username.lower(), username.capitalize(), username.upper()]
         variations = list(dict.fromkeys(variations))
@@ -148,7 +171,6 @@ def get_user_stats(username: str, db: firestore.Client = Depends(get_db)):
                 break
         
         # Si no está en 'users', probamos a ver si hay algo en 'scores' con ese nombre
-        # Por si acaso alguien juega sin estar en la colección users (poco probable pero posible)
         if not target_user:
             for var in variations:
                 first_score = list(scores_ref.where("username", "==", var).limit(1).stream())

@@ -1,6 +1,5 @@
 # FastAPI: Framework principal
 fastapi
-websockets
 
 # Uvicorn: Servidor para correr la API
 uvicorn
@@ -10,9 +9,6 @@ firebase-admin
 
 # Pydantic: Para validación de datos
 pydantic
-
-# Python-multipart: Para leer datos de formularios
-python-multipart
 
 # Passlib: Para seguridad de contraseñas
 passlib[bcrypt]

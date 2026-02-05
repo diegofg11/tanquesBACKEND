@@ -38,6 +38,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # --- MIS MANEJADORES DE ERRORES ---
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Maneja errores de validación de datos de entrada (Pydantic).
+    Retorna un JSON con el detalle del error y un mensaje amigable.
+    """
     return JSONResponse(
         status_code=422,
         content={"message": "He detectado un error de validación", "detalle": exc.errors()},
@@ -45,6 +49,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def debug_exception_handler(request: Request, exc: Exception):
+    """
+    Maneja excepciones genéricas no capturadas.
+    Retorna un error 500 con el detalle de la excepción (útil para depuración).
+    """
     return JSONResponse(
         status_code=500,
         content={"message": "Ha petado algo interno", "detalle": str(exc)},
@@ -52,6 +60,10 @@ async def debug_exception_handler(request: Request, exc: Exception):
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
+    """
+    Sirve una versión personalizada de Swagger UI.
+    Útil cuando los CDNs por defecto fallan o se requiere personalización.
+    """
     return get_swagger_ui_html(
         openapi_url=app.openapi_url,
         title=app.title + " - Swagger UI",
@@ -62,6 +74,9 @@ async def custom_swagger_ui_html():
 
 @app.get("/redoc", include_in_schema=False)
 async def redoc_html():
+    """
+    Sirve la documentación ReDoc de la API.
+    """
     return get_redoc_html(
         openapi_url=app.openapi_url,
         title=app.title + " - ReDoc",
@@ -70,11 +85,18 @@ async def redoc_html():
 
 @app.get("/dashboard")
 async def get_dashboard():
+    """
+    Sirve el archivo HTML principal del Dashboard estático.
+    """
     from fastapi.responses import FileResponse
     return FileResponse("static/dashboard/index.html")
 
 @app.get("/")
 async def root():
+    """
+    Punto de entrada raíz de la API.
+    Informa sobre el estado y las URLs de documentación y dashboard.
+    """
     return {
         "mensaje": "¡Mi API de Tanques (Single Player) con Firebase está en marcha!",
         "doc_url": "/docs",
