@@ -3,6 +3,9 @@ from fastapi import HTTPException, status
 from app.models.user import User
 from app.schemas.user import UserCreate
 from app.core.security import get_password_hash, verify_password
+from app.core.logger import get_logger
+
+logger = get_logger("app.services.user")
 
 class UserService:
     def __init__(self, db: firestore.Client):
@@ -34,6 +37,7 @@ class UserService:
         
         # 4. Guardado en Firestore
         self.users_ref.document(user_data.username).set(new_user.to_dict())
+        logger.info(f"Usuario registrado: {user_data.username}")
         
         return new_user
 
@@ -52,11 +56,13 @@ class UserService:
         user_data_db = user_doc.to_dict()
         
         if not verify_password(user_data.password, user_data_db["hashed_password"]):
+            logger.warning(f"Intento de login fallido para: {user_data.username} (Password incorrecta)")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Contraseña incorrecta."
             )
         
+        logger.info(f"Login exitoso: {user_data.username}")
         return user_data_db
 
     def get_user_profile(self, username: str):

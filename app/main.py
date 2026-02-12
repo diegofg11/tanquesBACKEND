@@ -8,7 +8,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from app.api import users, dashboard, events
+from app.core.logger import setup_logging, get_logger
+
+# Configurar Logging al inicio
+setup_logging()
+logger = get_logger("app")
 
 # --- INSTANCIA PRINCIPAL ---
 app = FastAPI(
@@ -43,6 +49,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     Maneja errores de validación de datos de entrada (Pydantic).
     Retorna un JSON con el detalle del error y un mensaje amigable.
     """
+    """
+    logger.warning(f"Error Validación: {exc.errors()}")
     return JSONResponse(
         status_code=422,
         content={"message": "He detectado un error de validación", "detalle": exc.errors()},
@@ -54,6 +62,8 @@ async def debug_exception_handler(request: Request, exc: Exception):
     Maneja excepciones genéricas no capturadas.
     Retorna un error 500 con el detalle de la excepción (útil para depuración).
     """
+    """
+    logger.error(f"Error No Manejado: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=500,
         content={"message": "Ha petado algo interno", "detalle": str(exc)},
@@ -98,6 +108,8 @@ async def root():
     Punto de entrada raíz de la API.
     Informa sobre el estado y las URLs de documentación y dashboard.
     """
+    """
+    logger.info("Acceso a root endpoint")
     return {
         "mensaje": "¡Mi API de Tanques (Single Player) con Firebase está en marcha!",
         "doc_url": "/docs",

@@ -9,6 +9,9 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 import json
+from app.core.logger import get_logger
+
+logger = get_logger("app.database")
 
 # Nombre de la variable de entorno que contendrá el JSON en la nube
 ENV_VAR_NAME = "FIREBASE_CREDENTIALS"
@@ -26,19 +29,19 @@ try:
             # Parseamos el string JSON a un diccionario
             cred_dict = json.loads(env_json)
             cred = credentials.Certificate(cred_dict)
-            print("INFO: Credenciales cargadas desde Variable de Entorno.")
+            logger.info("Credenciales cargadas desde Variable de Entorno.")
         
         # 2. Si no, intentamos leer del archivo local (Prioridad Local)
         elif os.path.exists(JSON_PATH):
             cred = credentials.Certificate(JSON_PATH)
-            print(f"INFO: Credenciales cargadas desde archivo local: {JSON_PATH}")
+            logger.info(f"Credenciales cargadas desde archivo local: {JSON_PATH}")
             
         else:
             raise FileNotFoundError("No se encontraron credenciales válidas (ni ENV ni Archivo).")
 
         firebase_admin.initialize_app(cred)
 except Exception as e:
-    print(f"ERROR CRÍTICO AL INICIAR FIREBASE: {e}")
+    logger.critical(f"ERROR CRÍTICO AL INICIAR FIREBASE: {e}", exc_info=True)
     # En local permitimos fallar, pero en la nube saltará error
     pass
 

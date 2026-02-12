@@ -3,7 +3,9 @@ import jwt
 from google.cloud import firestore
 from fastapi import HTTPException
 from app.schemas.user import ScoreSubmission
+from app.core.logger import get_logger
 
+logger = get_logger("app.services.score")
 SECRET_KEY = "CLAVE_SUPER_SECRETA_TANQUES_BACKEND" # En prod, usar env vars!
 ALGORITHM = "HS256"
 
@@ -40,6 +42,21 @@ class ScoreService:
         except jwt.PyJWTError:
             raise HTTPException(status_code=403, detail="Token inválido o manipulado")
 
+            raise HTTPException(status_code=403, detail="Token inválido o manipulado")
+
+    def _sanity_check(self, stats: ScoreSubmission, username: str):
+        """
+        Detecta anomalías o trampas obvias en los datos.
+        """
+        # Reglas de negocio (tiempos mínimos imposibles)
+        min_seconds_map = {1: 5, 2: 15, 3: 30}
+        min_sec = min_seconds_map.get(stats.nivel_alcanzado, 5)
+
+        if stats.tiempo_segundos < min_sec:
+            logger.warning(f"CHEAT DETECTED: {username} completó Nivel {stats.nivel_alcanzado} en {stats.tiempo_segundos}s (Min: {min_sec}s)")
+            # Podríamos lanzar error, o shadowbanear. Por ahora, forzamos tiempo mínimo para penalizar score.
+            stats.tiempo_segundos = min_sec * 2 # Penalización doble
+
     def calculate_score(self, stats: ScoreSubmission):
         """
         Calcula la puntuación basada en reglas de negocio.
@@ -58,6 +75,11 @@ class ScoreService:
         """
         # 1. Validar Token
         self.validate_game_token(stats.game_token, username)
+        
+        # 1.5 Sanity Check (Validar integridad)
+        self._sanity_check(stats, username)
+
+        logger.info(f"Procesando Score para {username}: Nivel {stats.nivel_alcanzado}, Tiempo {stats.tiempo_segundos}s")
 
         # 2. Calcular Score
         score_final = self.calculate_score(stats)
@@ -98,6 +120,7 @@ class ScoreService:
             
             if true_max_score > stored_score:
                 user_doc_ref.update({"score": true_max_score})
+                logger.info(f"Nuevo Récord Global para {username}: {true_max_score}")
         
         return {
             "score_partida": new_score,

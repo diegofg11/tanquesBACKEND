@@ -3,7 +3,9 @@ from fastapi import HTTPException
 from datetime import datetime, timezone
 import jwt
 from app.schemas.event import EventCreate
+from app.core.logger import get_logger
 
+logger = get_logger("app.services.event")
 SECRET_KEY = "CLAVE_SUPER_SECRETA_TANQUES_BACKEND"
 ALGORITHM = "HS256"
 
@@ -36,6 +38,7 @@ class EventService:
         # 3. Guardar (Fire & Forget idealmente, pero aquí esperamos por seguridad)
         # Guardamos en una colección root 'events' para métricas globales fáciles
         self.events_ref.add(event_doc)
+        logger.info(f"Evento registrado [{username}]: {event.event_type}")
 
         return {"status": "ok", "event_id": "logged"}
 
