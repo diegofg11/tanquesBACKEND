@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
-from app.api import users, dashboard
+from app.api import users, dashboard, events
 
 # --- INSTANCIA PRINCIPAL ---
 app = FastAPI(
@@ -31,6 +31,7 @@ app.add_middleware(
 # Aquí conecto mis rutas
 app.include_router(users.router)
 app.include_router(dashboard.router)
+app.include_router(events.router)
 
 # Servir archivos estáticos para el Dashboard
 app.mount("/static", StaticFiles(directory="static"), name="static")
