@@ -49,7 +49,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     Maneja errores de validación de datos de entrada (Pydantic).
     Retorna un JSON con el detalle del error y un mensaje amigable.
     """
-    """
+
     logger.warning(f"Error Validación: {exc.errors()}")
     return JSONResponse(
         status_code=422,
@@ -62,7 +62,7 @@ async def debug_exception_handler(request: Request, exc: Exception):
     Maneja excepciones genéricas no capturadas.
     Retorna un error 500 con el detalle de la excepción (útil para depuración).
     """
-    """
+
     logger.error(f"Error No Manejado: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=500,
@@ -108,7 +108,7 @@ async def root():
     Punto de entrada raíz de la API.
     Informa sobre el estado y las URLs de documentación y dashboard.
     """
-    """
+
     logger.info("Acceso a root endpoint")
     return {
         "mensaje": "¡Mi API de Tanques (Single Player) con Firebase está en marcha!",
