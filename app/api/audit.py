@@ -1,3 +1,9 @@
+"""
+Endpoints de API para el Sistema de Auditoría.
+
+Permite listar, crear (test) y exportar/importar registros de auditoría
+en formatos CSV y JSON.
+"""
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -8,14 +14,19 @@ from fastapi.responses import Response
 
 router = APIRouter(
     prefix="/audits",
-    tags=["audits"],
+    tags=["Auditoría"],
     responses={404: {"description": "Not found"}},
 )
 
 @router.get("/", response_model=List[Audit])
 def read_audits(skip: int = 0, limit: int = 100, db: Session = Depends(get_db_sql)):
     """
-    Obtiene lista de auditorías paginada.
+    Obtiene una lista paginada de registros de auditoría.
+
+    Args:
+        skip (int): Número de registros a saltar.
+        limit (int): Número máximo de registros a devolver.
+        db (Session): Sesión de base de datos.
     """
     audits = audit_service.get_audits(db, skip=skip, limit=limit)
     return audits

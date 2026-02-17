@@ -1,3 +1,8 @@
+"""
+Rutas de la API para la gestión de Eventos y Telemetría.
+
+Permite a los clientes (juego) registrar eventos como muertes, daño recibido, etc.
+"""
 from fastapi import APIRouter, Depends
 from google.cloud import firestore
 from app.database import get_db
@@ -10,6 +15,7 @@ router = APIRouter(
 )
 
 def get_event_service(db: firestore.Client = Depends(get_db)) -> EventService:
+    """Inyección de dependencia para EventService."""
     return EventService(db)
 
 @router.post("/")
@@ -20,7 +26,7 @@ def log_game_event(
     """
     Registra un evento ocurrido durante la partida.
     
-    Usado para telemetría: muertes, daño, items, etc.
+    Se utiliza para recoger telemetría del juego en tiempo real (muertes, daño, etc.).
     """
     return service.log_event(event)
 

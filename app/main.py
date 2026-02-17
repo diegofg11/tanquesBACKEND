@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+
 from app.core.logger import setup_logging, get_logger
 from app.db_sql import Base, engine
 from app.api import users, dashboard, events, audit
@@ -23,7 +24,8 @@ logger = get_logger("app")
 # --- INSTANCIA PRINCIPAL ---
 app = FastAPI(
     title="Tanques API",
-    description="API REST para el juego de Tanques (Single Player) utilizando Firebase Firestore como backend.",
+    description="API REST para el juego de Tanques (Single Player) utilizando Firebase Firestore como backend y SQLite para auditoría.",
+
     version="1.0.0",
     docs_url=None,  # Desactivamos los docs por defecto para personalizarlos (Solución para Render)
     redoc_url=None
@@ -55,11 +57,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     Retorna un JSON con el detalle del error y un mensaje amigable.
     """
 
-    logger.warning(f"Error Validación: {exc.errors()}")
+    logger.warning(f"Error de Validación: {exc.errors()}")
     return JSONResponse(
         status_code=422,
-        content={"message": "He detectado un error de validación", "detalle": exc.errors()},
+        content={"message": "Error de validación en los datos enviados.", "detalle": exc.errors()},
     )
+
 
 @app.exception_handler(Exception)
 async def debug_exception_handler(request: Request, exc: Exception):
@@ -68,11 +71,12 @@ async def debug_exception_handler(request: Request, exc: Exception):
     Retorna un error 500 con el detalle de la excepción (útil para depuración).
     """
 
-    logger.error(f"Error No Manejado: {str(exc)}", exc_info=True)
+    logger.error(f"Error Interno No Manejado: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"message": "Ha petado algo interno", "detalle": str(exc)},
+        content={"message": "Error interno del servidor.", "detalle": str(exc)},
     )
+
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
@@ -116,7 +120,7 @@ async def root():
 
     logger.info("Acceso a root endpoint")
     return {
-        "mensaje": "¡Mi API de Tanques (Single Player) con Firebase está en marcha!",
+        "mensaje": "Tanques API en funcionamiento",
         "doc_url": "/docs",
         "dashboard_url": "/dashboard"
     }

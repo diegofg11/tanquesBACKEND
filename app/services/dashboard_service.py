@@ -1,15 +1,34 @@
+"""
+Servicio para el Dashboard Administrativo.
+
+Proporciona métodos para agregar y calcular estadísticas globales y por usuario,
+utilizando consultas a las colecciones de Firestore.
+"""
+from typing import Dict, Any, List
 from google.cloud import firestore
 from datetime import datetime, timedelta, timezone
 
 class DashboardService:
+    """
+    Clase de servicio para lógica del dashboard.
+    """
     def __init__(self, db: firestore.Client):
         self.db = db
         self.users_ref = db.collection("users")
         self.scores_ref = db.collection("scores")
 
-    def get_global_stats(self, time_range: str = "all"):
+    def get_global_stats(self, time_range: str = "all") -> Dict[str, Any]:
         """
         Genera estadísticas completas para el dashboard administrativo.
+
+        Calcula totales de usuarios, partidas, distribución de niveles y actividad
+        reciente basada en el rango de tiempo especificado.
+
+        Args:
+            time_range (str): "all", "today", o "week".
+
+        Returns:
+            dict: Diccionario con todas las métricas calculadas.
         """
         # 1. Total Usuarios
         total_users = len(list(self.users_ref.list_documents()))

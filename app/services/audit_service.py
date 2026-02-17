@@ -1,14 +1,29 @@
+"""
+Servicio de Auditoría.
+
+Maneja la lógica de negocio para el registro, consulta, importación y exportación
+de logs de auditoría utilizando SQLAlchemy y la base de datos SQLite local.
+"""
 import csv
 import json
 import io
 from datetime import datetime
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.models.audit import Audit
-from app.schemas.audit import AuditCreate
 
-def log_audit(db: Session, user_id: str, action: str, username: str = None):
+def log_audit(db: Session, user_id: str, action: str, username: Optional[str] = None) -> Audit:
     """
     Registra una nueva acción de auditoría en la base de datos local.
+
+    Args:
+        db (Session): Sesión de base de datos SQLAlchemy.
+        user_id (str): ID del usuario que realizó la acción.
+        action (str): Descripción de la acción.
+        username (str, optional): Nombre de usuario. Defaults to None.
+
+    Returns:
+        Audit: El registro de auditoría creado.
     """
     audit_entry = Audit(user_id=user_id, action=action, username=username)
     db.add(audit_entry)

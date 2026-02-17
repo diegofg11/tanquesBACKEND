@@ -6,8 +6,10 @@ Delegan la lógica de negocio a los servicios `UserService` y `ScoreService`.
 from fastapi import APIRouter, Depends
 from google.cloud import firestore
 from app.database import get_db
+from app.database import get_db
 from app.schemas.user import UserCreate, UserOut, ScoreSubmission, UserProfileOut
 from app.services.user_service import UserService
+
 from app.services.score_service import ScoreService
 from app.db_sql import get_db_sql
 from app.services import audit_service
@@ -26,6 +28,7 @@ def get_user_service(db: firestore.Client = Depends(get_db)) -> UserService:
 def get_score_service(db: firestore.Client = Depends(get_db)) -> ScoreService:
     return ScoreService(db)
 
+
 # --- RUTAS ---
 
 @router.post("/register", response_model=UserOut)
@@ -41,6 +44,7 @@ def register_user(
     # Auditoría con SQLAlchemy
     audit_service.log_audit(db_audit, user_id=user.uid, action="User Registered", username=user.username)
     return user
+
 
 @router.post("/login")
 def login(
@@ -58,12 +62,12 @@ def login(
     return {"mensaje": "Autenticación exitosa", "username": user_data.username}
 
 @router.post("/{username}/start-game")
-@router.post("/{username}/start-game")
 def start_game(
     username: str, 
     service: ScoreService = Depends(get_score_service),
     db_audit: Session = Depends(get_db_sql)
 ):
+
     """
     Inicia una sesión y devuelve un token de juego.
     """

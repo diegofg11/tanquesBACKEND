@@ -1,6 +1,7 @@
 """
 Rutas de la API para el Dashboard administrativo.
 
+Expone endpoints para recuperar estadísticas globales y detalladas por usuario.
 Delega la lógica de agregación al `DashboardService`.
 """
 from fastapi import APIRouter, Depends
@@ -14,6 +15,7 @@ router = APIRouter(
 )
 
 def get_dashboard_service(db: firestore.Client = Depends(get_db)) -> DashboardService:
+    """Inyección de dependencia para DashboardService."""
     return DashboardService(db)
 
 @router.get("/stats")
@@ -23,6 +25,9 @@ def get_dashboard_stats(
 ):
     """
     Recupera estadísticas globales para el dashboard.
+
+    Args:
+        time_range (str): Filtro temporal ("all", "today", "week").
     """
     return service.get_global_stats(time_range)
 

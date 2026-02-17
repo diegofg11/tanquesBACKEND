@@ -1,23 +1,35 @@
+"""
+Servicio de Puntuaciones y Sesiones de Juego.
+
+Gestiona la creación de tokens de sesión, validación de partidas y
+el procesamiento de puntuaciones finales, incluyendo detección básica de trampas.
+"""
 import datetime
 import jwt
+from typing import List, Dict, Any
 from google.cloud import firestore
 from fastapi import HTTPException
 from app.schemas.user import ScoreSubmission
 from app.core.logger import get_logger
 
 logger = get_logger("app.services.score")
-SECRET_KEY = "CLAVE_SUPER_SECRETA_TANQUES_BACKEND" # En prod, usar env vars!
+SECRET_KEY = "CLAVE_SUPER_SECRETA_TANQUES_BACKEND" # TODO: Mover a variables de entorno
 ALGORITHM = "HS256"
 
 class ScoreService:
+    """
+    Servicio para lógica de puntuaciones y sesiones.
+    """
     def __init__(self, db: firestore.Client):
         self.db = db
         self.scores_ref = db.collection("scores")
         self.users_ref = db.collection("users")
 
-    def create_game_token(self, username: str):
+    def create_game_token(self, username: str) -> str:
         """
         Genera un JWT para una nueva sesión de juego.
+        
+        El token tiene una validez limitada y firma la sesión del usuario.
         """
         expiration = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
         payload = {

@@ -1,3 +1,9 @@
+"""
+Módulo de configuración de logging.
+
+Define la configuración para el sistema de logs de la aplicación,
+especificando formatos y manejadores para la salida por consola.
+"""
 import logging
 import logging.config
 import sys
@@ -9,11 +15,6 @@ LOGGING_CONFIG = {
     "formatters": {
         "default": {
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        },
-        "json": {
-            "format": "%(asctime)s %(name)s %(levelname)s %(message)s",
-             # En un entorno real (Cloud Run/K8s) usaríamos una librería como python-json-logger
-             # pero esto es suficiente para empezar.
         },
     },
     "handlers": {
@@ -39,11 +40,30 @@ LOGGING_CONFIG = {
             "level": "INFO",
             "propagate": False,
         },
+        "app.database": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 
-def setup_logging():
+def setup_logging() -> None:
+    """
+    Inicializa la configuración de logging de la aplicación.
+    
+    Aplica la configuración definida en LOGGING_CONFIG.
+    """
     logging.config.dictConfig(LOGGING_CONFIG)
 
-def get_logger(name: str):
+def get_logger(name: str) -> logging.Logger:
+    """
+    Obtiene una instancia de logger con el nombre especificado.
+
+    Args:
+        name (str): El nombre del logger (ej: 'app.services').
+
+    Returns:
+        logging.Logger: La instancia del logger configurado.
+    """
     return logging.getLogger(name)

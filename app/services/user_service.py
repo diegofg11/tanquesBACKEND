@@ -1,3 +1,10 @@
+"""
+Servicio de Gestión de Usuarios.
+
+Maneja el registro, autenticación y recuperación de perfiles de usuario
+interactuando con la colección 'users' en Firestore.
+"""
+from typing import Dict, Any
 from google.cloud import firestore
 from fastapi import HTTPException, status
 from app.models.user import User
@@ -8,14 +15,26 @@ from app.core.logger import get_logger
 logger = get_logger("app.services.user")
 
 class UserService:
+    """
+    Servicio para lógica relacionada con usuarios.
+    """
     def __init__(self, db: firestore.Client):
         self.db = db
         self.users_ref = db.collection("users")
         self.scores_ref = db.collection("scores")
 
-    def register_user(self, user_data: UserCreate):
+    def register_user(self, user_data: UserCreate) -> User:
         """
         Registra un nuevo usuario en el sistema.
+
+        Args:
+            user_data (UserCreate): Datos del usuario a registrar.
+
+        Returns:
+            User: El objeto usuario creado.
+
+        Raises:
+            HTTPException: Si el usuario ya existe.
         """
         # 1. Verificar existencia del usuario
         query = self.users_ref.where("username", "==", user_data.username).limit(1).get()
