@@ -9,8 +9,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
-from app.api import users, dashboard, events
 from app.core.logger import setup_logging, get_logger
+from app.db_sql import Base, engine
+from app.api import users, dashboard, events, audit
+
+# Crear tablas de base de datos local (Auditoría)
+Base.metadata.create_all(bind=engine)
 
 # Configurar Logging al inicio
 setup_logging()
@@ -38,6 +42,7 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(dashboard.router)
 app.include_router(events.router)
+app.include_router(audit.router)
 
 # Servir archivos estáticos para el Dashboard
 app.mount("/static", StaticFiles(directory="static"), name="static")

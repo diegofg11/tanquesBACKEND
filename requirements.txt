@@ -15,3 +15,6 @@ passlib[bcrypt]
 
 # PyJWT: Para tokens de seguridad
 pyjwt
+
+# SQLAlchemy: Para base de datos SQL local (Auditoría)
+sqlalchemy
